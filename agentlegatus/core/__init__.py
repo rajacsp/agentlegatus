@@ -9,6 +9,7 @@ from agentlegatus.core.state import (
     InMemoryStateBackend,
 )
 from agentlegatus.core.graph import PEGNode, PEGEdge, PortableExecutionGraph
+from agentlegatus.core.executor import WorkflowExecutor
 
 __all__ = [
     "WorkflowDefinition",
@@ -24,4 +25,5 @@ __all__ = [
     "PEGNode",
     "PEGEdge",
     "PortableExecutionGraph",
+    "WorkflowExecutor",
 ]

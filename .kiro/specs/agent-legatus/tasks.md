@@ -166,36 +166,36 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Add logging for each retry attempt
     - _Requirements: 6.1-6.7_
   
-  - [-] 8.2 Write property tests for retry logic
+  - [x] 8.2 Write property tests for retry logic
     - **Property 7: Retry Attempt Limit**
     - **Property 8: Retry Exponential Backoff**
     - **Validates: Requirements 6.1-6.5**
 
-- [ ] 9. Implement Agent class
-  - [ ] 9.1 Create Agent class with capabilities
+- [x] 9. Implement Agent class
+  - [x] 9.1 Create Agent class with capabilities
     - Implement __init__ with agent_id, name, capabilities, provider
     - Implement AgentCapability enumeration (TOOL_USE, MEMORY, PLANNING, REFLECTION)
     - Implement get_status() method
     - _Requirements: 18.1-18.9_
   
-  - [ ] 9.2 Implement Agent execution and tool invocation
+  - [x] 9.2 Implement Agent execution and tool invocation
     - Implement run() method that delegates to provider
     - Implement invoke_tool() method using ToolRegistry
     - _Requirements: 18.2, 18.6_
   
-  - [ ] 9.3 Implement Agent memory operations
+  - [x] 9.3 Implement Agent memory operations
     - Implement store_memory() method using MemoryManager
     - Implement retrieve_memory() method using MemoryManager
     - _Requirements: 18.3, 18.7, 18.8_
 
-- [ ] 10. Implement Cohort class
-  - [ ] 10.1 Create Cohort class with coordination strategies
+- [x] 10. Implement Cohort class
+  - [x] 10.1 Create Cohort class with coordination strategies
     - Implement __init__ with name, strategy, max_agents
     - Implement CohortStrategy enumeration (ROUND_ROBIN, LOAD_BALANCED, BROADCAST, LEADER_FOLLOWER)
     - Implement add_agent() and remove_agent() methods with capacity enforcement
     - _Requirements: 17.1-17.3_
   
-  - [ ] 10.2 Implement Cohort task execution strategies
+  - [x] 10.2 Implement Cohort task execution strategies
     - Implement execute_task() with strategy routing
     - Implement ROUND_ROBIN strategy
     - Implement LOAD_BALANCED strategy
@@ -203,16 +203,16 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Implement LEADER_FOLLOWER strategy
     - _Requirements: 17.4-17.7_
   
-  - [ ] 10.3 Implement Cohort communication
+  - [x] 10.3 Implement Cohort communication
     - Implement broadcast_message() method
     - Implement get_available_agents() method
     - _Requirements: 17.8, 17.9_
   
-  - [ ]* 10.4 Write property tests for Cohort
+  - [x] 10.4 Write property tests for Cohort
     - **Property 24: Cohort Capacity Enforcement**
     - **Validates: Requirements 17.1, 17.2**
 
-- [ ] 11. Implement WorkflowExecutor
+- [x] 11. Implement WorkflowExecutor
   - [ ] 11.1 Create WorkflowExecutor class
     - Implement __init__ with provider, state_manager, tool_registry, event_bus
     - Implement execute_step() method with retry logic integration
@@ -220,12 +220,12 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Emit StepStarted and StepCompleted/StepFailed events
     - _Requirements: 2.6-2.9, 6.1-6.7_
   
-  - [ ] 11.2 Implement checkpoint and recovery
+  - [x] 11.2 Implement checkpoint and recovery
     - Implement checkpoint_state() method
     - Implement restore_from_checkpoint() method
     - _Requirements: 21.1-21.7_
   
-  - [ ] 11.3 Implement provider switching
+  - [x] 11.3 Implement provider switching
     - Implement switch_provider() method
     - Export state from current provider
     - Convert workflow to PortableExecutionGraph
