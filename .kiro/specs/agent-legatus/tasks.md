@@ -51,20 +51,20 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Add handler isolation (exceptions in one handler don't affect others)
     - _Requirements: 7.1-7.7_
   
-  - [-] 3.3 Write property tests for EventBus
+  - [x] 3.3 Write property tests for EventBus
     - **Property 4: Event Temporal Ordering**
     - **Property 20: Event Handler Isolation**
     - **Property 21: Event History Completeness**
     - **Property 29: Unsubscribe Effectiveness**
     - **Validates: Requirements 7.3, 7.4, 7.5, 7.6**
 
-- [ ] 4. Implement StateManager and state backends
-  - [ ] 4.1 Create StateBackend abstract base class
+- [x] 4. Implement StateManager and state backends
+  - [x] 4.1 Create StateBackend abstract base class
     - Define abstract interface for state storage
     - Implement StateScope enumeration (WORKFLOW, STEP, AGENT, GLOBAL)
     - _Requirements: 8.12_
   
-  - [ ] 4.2 Implement StateManager core functionality
+  - [x] 4.2 Implement StateManager core functionality
     - Implement get(), set(), update(), delete() methods with scope support
     - Implement get_all() and clear_scope() methods
     - Implement create_snapshot() and restore_snapshot() methods
@@ -72,65 +72,65 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Ensure atomic updates and scope isolation
     - _Requirements: 8.1-8.12_
   
-  - [ ]* 4.3 Write property tests for StateManager
+  - [x] 4.3 Write property tests for StateManager
     - **Property 3: State Round-Trip Consistency**
     - **Property 22: State Scope Isolation**
     - **Property 23: State Snapshot Round-Trip**
     - **Property 30: State Update Atomicity**
     - **Validates: Requirements 8.1, 8.2, 8.4, 8.9, 8.10, 8.12**
   
-  - [ ] 4.4 Implement in-memory StateBackend
+  - [x] 4.4 Implement in-memory StateBackend
     - Create simple dictionary-based backend for development/testing
     - Implement all StateBackend abstract methods
     - _Requirements: 8.1-8.12_
 
-- [ ] 5. Implement ToolRegistry and Tool abstraction
-  - [ ] 5.1 Create Tool class and ToolParameter model
+- [x] 5. Implement ToolRegistry and Tool abstraction
+  - [x] 5.1 Create Tool class and ToolParameter model
     - Implement ToolParameter with name, type, description, required, default
     - Implement Tool class with name, description, parameters, handler
     - Add validate_input() method
     - _Requirements: 9.5, 9.6_
   
-  - [ ] 5.2 Implement tool format converters
+  - [x] 5.2 Implement tool format converters
     - Implement to_openai_format() method
     - Implement to_anthropic_format() method
     - _Requirements: 9.8, 9.9_
   
-  - [ ] 5.3 Implement ToolRegistry
+  - [x] 5.3 Implement ToolRegistry
     - Implement register_tool(), get_tool(), list_tools() methods
     - Implement get_tools_for_provider() with format conversion
     - Implement unregister_tool() method
     - _Requirements: 9.1-9.4_
   
-  - [ ]* 5.4 Write property tests for Tool and ToolRegistry
+  - [x] 5.4 Write property tests for Tool and ToolRegistry
     - **Property 10: Tool Registry Round-Trip**
     - **Property 11: Tool Input Validation Consistency**
     - **Validates: Requirements 9.1, 9.2, 9.5, 9.6, 9.7**
 
-- [ ] 6. Implement PortableExecutionGraph (PEG)
-  - [ ] 6.1 Create PEGNode and PEGEdge dataclasses
+- [x] 6. Implement PortableExecutionGraph (PEG)
+  - [x] 6.1 Create PEGNode and PEGEdge dataclasses
     - Implement PEGNode with node_id, node_type, config, inputs, outputs
     - Implement PEGEdge with source, target, optional condition
     - _Requirements: 12.1, 12.2_
   
-  - [ ] 6.2 Implement PortableExecutionGraph core functionality
+  - [x] 6.2 Implement PortableExecutionGraph core functionality
     - Implement add_node(), add_edge(), remove_node() methods
     - Implement get_node(), get_successors(), get_predecessors() methods
     - _Requirements: 12.1-12.6_
   
-  - [ ] 6.3 Implement graph validation
+  - [x] 6.3 Implement graph validation
     - Implement validate() method with cycle detection using DFS
     - Add validation for invalid node references
     - Add validation for unique node IDs
     - Return (is_valid, errors) tuple
     - _Requirements: 12.7, 12.8, 29.1-29.5_
   
-  - [ ] 6.4 Implement graph serialization
+  - [x] 6.4 Implement graph serialization
     - Implement to_dict(), from_dict() class method
     - Implement to_json(), from_json() class method
     - _Requirements: 12.9, 12.10_
   
-  - [ ]* 6.5 Write property tests for PortableExecutionGraph
+  - [x] 6.5 Write property tests for PortableExecutionGraph
     - **Property 16: Graph Serialization Round-Trip**
     - **Property 17: Graph Node Removal Completeness**
     - **Property 25: Graph Cycle Detection**
@@ -138,8 +138,8 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - **Validates: Requirements 12.3, 12.7, 12.8, 12.9, 12.10, 29.1, 29.2**
 
 
-- [ ] 7. Implement BaseProvider and ProviderRegistry
-  - [ ] 7.1 Create BaseProvider abstract class
+- [x] 7. Implement BaseProvider and ProviderRegistry
+  - [x] 7.1 Create BaseProvider abstract class
     - Define abstract methods: create_agent(), execute_agent(), invoke_tool()
     - Define abstract methods: export_state(), import_state()
     - Define abstract methods: to_portable_graph(), from_portable_graph()
@@ -148,25 +148,25 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Define ProviderCapability enumeration
     - _Requirements: 3.1-3.8, 24.1-24.5_
   
-  - [ ] 7.2 Implement ProviderRegistry
+  - [x] 7.2 Implement ProviderRegistry
     - Implement register_provider(), get_provider(), list_providers() methods
     - Implement get_provider_info() and unregister_provider() methods
     - Add provider instance caching
     - _Requirements: 4.1-4.6_
   
-  - [ ]* 7.3 Write property tests for ProviderRegistry
+  - [x] 7.3 Write property tests for ProviderRegistry
     - **Property 18: Provider Registry Caching**
     - **Property 19: Provider Registry Completeness**
     - **Validates: Requirements 4.1, 4.4, 4.6**
 
-- [ ] 8. Implement retry logic utilities
-  - [ ] 8.1 Create retry utility functions
+- [x] 8. Implement retry logic utilities
+  - [x] 8.1 Create retry utility functions
     - Implement execute_with_retry() function with exponential backoff
     - Support RetryPolicy configuration (max_attempts, backoff_multiplier, initial_delay, max_delay)
     - Add logging for each retry attempt
     - _Requirements: 6.1-6.7_
   
-  - [ ]* 8.2 Write property tests for retry logic
+  - [-] 8.2 Write property tests for retry logic
     - **Property 7: Retry Attempt Limit**
     - **Property 8: Retry Exponential Backoff**
     - **Validates: Requirements 6.1-6.5**

@@ -2,8 +2,13 @@
 
 from agentlegatus.core.workflow import WorkflowDefinition, WorkflowStep, WorkflowStatus
 from agentlegatus.core.event_bus import EventBus, Event, EventType
-from agentlegatus.core.state import StateManager, StateScope
-from agentlegatus.core.peg import PortableExecutionGraph, PEGNode, PEGEdge
+from agentlegatus.core.state import (
+    StateBackend,
+    StateManager,
+    StateScope,
+    InMemoryStateBackend,
+)
+from agentlegatus.core.graph import PEGNode, PEGEdge, PortableExecutionGraph
 
 __all__ = [
     "WorkflowDefinition",
@@ -12,9 +17,11 @@ __all__ = [
     "EventBus",
     "Event",
     "EventType",
+    "StateBackend",
     "StateManager",
     "StateScope",
-    "PortableExecutionGraph",
+    "InMemoryStateBackend",
     "PEGNode",
     "PEGEdge",
+    "PortableExecutionGraph",
 ]
