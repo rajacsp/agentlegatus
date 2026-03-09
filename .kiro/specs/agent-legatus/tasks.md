@@ -234,7 +234,7 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - Emit ProviderSwitched event
     - _Requirements: 5.1-5.8_
   
-  - [ ]* 11.4 Write property tests for WorkflowExecutor
+  - [x] 11.4 Write property tests for WorkflowExecutor
     - **Property 5: Provider State Round-Trip**
     - **Property 6: Portable Graph Round-Trip**
     - **Validates: Requirements 3.5, 3.6, 3.7, 3.8**
