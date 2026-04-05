@@ -517,3 +517,206 @@ class TestWorkflowExecutorProviderSwitching:
         assert "graph_edges" in event.data
         assert "state_keys" in event.data
         assert isinstance(event.data["state_keys"], list)
+
+
+class TestWorkflowExecutorExecuteGraph:
+    """Tests for WorkflowExecutor.execute_graph()."""
+
+    @pytest.fixture
+    def state_manager(self):
+        backend = InMemoryStateBackend()
+        return StateManager(backend=backend)
+
+    @pytest.fixture
+    def event_bus(self):
+        return EventBus()
+
+    @pytest.fixture
+    def mock_provider(self):
+        provider = Mock()
+        provider.execute_agent = AsyncMock(return_value={"output": "ok"})
+        return provider
+
+    @pytest.fixture
+    def executor(self, mock_provider, state_manager, event_bus):
+        return WorkflowExecutor(
+            provider=mock_provider,
+            state_manager=state_manager,
+            tool_registry=Mock(),
+            event_bus=event_bus,
+        )
+
+    def _make_graph(self, nodes, edges=None):
+        """Helper to build a PortableExecutionGraph."""
+        from agentlegatus.core.graph import PEGEdge, PEGNode, PortableExecutionGraph
+
+        graph = PortableExecutionGraph()
+        for n in nodes:
+            graph.add_node(
+                PEGNode(
+                    node_id=n["id"],
+                    node_type=n.get("type", "agent"),
+                    config=n.get("config", {}),
+                    inputs=n.get("inputs", []),
+                    outputs=n.get("outputs", []),
+                )
+            )
+        for e in edges or []:
+            graph.add_edge(PEGEdge(source=e[0], target=e[1]))
+        return graph
+
+    @pytest.mark.asyncio
+    async def test_execute_empty_graph(self, executor):
+        """Executing an empty graph returns empty results."""
+        from agentlegatus.core.graph import PortableExecutionGraph
+
+        graph = PortableExecutionGraph()
+        result = await executor.execute_graph(graph, {})
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_execute_single_node(self, executor, mock_provider):
+        """Single-node graph executes the node and returns its result."""
+        graph = self._make_graph([{"id": "a"}])
+        result = await executor.execute_graph(graph, {})
+        assert "a" in result
+        mock_provider.execute_agent.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_respects_dependency_order(self, executor, mock_provider):
+        """Nodes execute in topological order respecting edges."""
+        call_order = []
+        original = mock_provider.execute_agent
+
+        async def track_call(agent, input_data, state):
+            call_order.append(input_data["node_id"])
+            return {"output": input_data["node_id"]}
+
+        mock_provider.execute_agent = AsyncMock(side_effect=track_call)
+
+        graph = self._make_graph(
+            [{"id": "a"}, {"id": "b", "inputs": ["a"]}, {"id": "c", "inputs": ["b"]}],
+            [("a", "b"), ("b", "c")],
+        )
+        await executor.execute_graph(graph, {})
+        assert call_order == ["a", "b", "c"]
+
+    @pytest.mark.asyncio
+    async def test_execute_passes_prior_results_as_inputs(self, executor, mock_provider):
+        """Node inputs are populated from prior node results."""
+        captured_inputs = {}
+
+        async def capture(agent, input_data, state):
+            captured_inputs[input_data["node_id"]] = input_data.get("inputs")
+            return f"result_{input_data['node_id']}"
+
+        mock_provider.execute_agent = AsyncMock(side_effect=capture)
+
+        graph = self._make_graph(
+            [{"id": "a"}, {"id": "b", "inputs": ["a"]}],
+            [("a", "b")],
+        )
+        await executor.execute_graph(graph, {})
+        assert captured_inputs["b"] == {"a": "result_a"}
+
+    @pytest.mark.asyncio
+    async def test_execute_initializes_state(self, executor, state_manager):
+        """Initial state is written to the state manager before execution."""
+        from agentlegatus.core.graph import PortableExecutionGraph
+
+        graph = PortableExecutionGraph()
+        await executor.execute_graph(graph, {"foo": "bar"})
+        val = await state_manager.get("foo", scope=StateScope.WORKFLOW)
+        assert val == "bar"
+
+    @pytest.mark.asyncio
+    async def test_execute_emits_step_events(self, executor, event_bus):
+        """StepStarted and StepCompleted events are emitted for each node."""
+        from agentlegatus.core.event_bus import EventType
+
+        events = []
+
+        async def capture(event):
+            events.append(event)
+
+        event_bus.subscribe(EventType.STEP_STARTED, capture)
+        event_bus.subscribe(EventType.STEP_COMPLETED, capture)
+
+        graph = self._make_graph([{"id": "x"}])
+        await executor.execute_graph(graph, {})
+
+        types = [e.event_type for e in events]
+        assert EventType.STEP_STARTED in types
+        assert EventType.STEP_COMPLETED in types
+
+    @pytest.mark.asyncio
+    async def test_execute_emits_step_failed_on_error(self, executor, mock_provider, event_bus):
+        """StepFailed event is emitted when a node raises."""
+        from agentlegatus.core.event_bus import EventType
+
+        mock_provider.execute_agent = AsyncMock(side_effect=RuntimeError("boom"))
+
+        events = []
+
+        async def capture(event):
+            events.append(event)
+
+        event_bus.subscribe(EventType.STEP_FAILED, capture)
+
+        graph = self._make_graph([{"id": "x"}])
+        with pytest.raises(RuntimeError, match="boom"):
+            await executor.execute_graph(graph, {})
+
+        assert len(events) == 1
+        assert events[0].data["error"] == "boom"
+
+    @pytest.mark.asyncio
+    async def test_execute_invalid_graph_raises(self, executor):
+        """Executing an invalid graph (with cycles) raises ValueError."""
+        from agentlegatus.core.graph import PEGEdge, PEGNode, PortableExecutionGraph
+
+        graph = PortableExecutionGraph()
+        graph.nodes["a"] = PEGNode(node_id="a", node_type="agent", config={}, inputs=[], outputs=[])
+        graph.nodes["b"] = PEGNode(node_id="b", node_type="agent", config={}, inputs=[], outputs=[])
+        graph.edges = [PEGEdge(source="a", target="b"), PEGEdge(source="b", target="a")]
+
+        with pytest.raises(ValueError, match="Graph validation failed"):
+            await executor.execute_graph(graph, {})
+
+    @pytest.mark.asyncio
+    async def test_execute_timeout_enforcement(self, executor, mock_provider):
+        """A node with a timeout that exceeds it raises TimeoutError."""
+        import asyncio
+
+        async def slow_agent(agent, input_data, state):
+            await asyncio.sleep(10)
+            return "done"
+
+        mock_provider.execute_agent = AsyncMock(side_effect=slow_agent)
+
+        graph = self._make_graph([{"id": "slow", "config": {"timeout": 0.05}}])
+        with pytest.raises(asyncio.TimeoutError):
+            await executor.execute_graph(graph, {})
+
+    @pytest.mark.asyncio
+    async def test_execute_no_timeout_when_not_configured(self, executor, mock_provider):
+        """Nodes without a timeout config execute without timeout enforcement."""
+        async def normal_agent(agent, input_data, state):
+            return "ok"
+
+        mock_provider.execute_agent = AsyncMock(side_effect=normal_agent)
+
+        graph = self._make_graph([{"id": "a", "config": {}}])
+        result = await executor.execute_graph(graph, {})
+        assert result["a"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_execute_stores_results_in_step_scope(self, executor, state_manager, mock_provider):
+        """Each node result is stored in the STEP scope of the state manager."""
+        mock_provider.execute_agent = AsyncMock(return_value="step_result")
+
+        graph = self._make_graph([{"id": "n1"}])
+        await executor.execute_graph(graph, {})
+
+        stored = await state_manager.get("result_n1", scope=StateScope.STEP)
+        assert stored == "step_result"

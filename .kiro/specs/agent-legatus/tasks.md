@@ -239,46 +239,46 @@ Target: ~2000 lines of core code with minimal dependencies, Python 3.10+, async/
     - **Property 6: Portable Graph Round-Trip**
     - **Validates: Requirements 3.5, 3.6, 3.7, 3.8**
   
-  - [ ] 11.5 Implement execute_graph() method
+  - [x] 11.5 Implement execute_graph() method
     - Execute complete PortableExecutionGraph
     - Handle timeout enforcement at step level
     - _Requirements: 28.2, 28.3, 28.5_
 
 
 - [ ] 12. Implement Centurion class
-  - [ ] 12.1 Create Centurion class with execution strategies
+  - [-] 12.1 Create Centurion class with execution strategies
     - Implement __init__ with name, strategy, event_bus
     - Implement ExecutionStrategy enumeration (SEQUENTIAL, PARALLEL, CONDITIONAL)
     - Implement add_cohort() method
     - _Requirements: 2.1-2.4_
   
-  - [ ] 12.2 Implement execution plan building
+  - [x] 12.2 Implement execution plan building
     - Implement build_execution_plan() using topological sort
     - Validate DAG structure (no cycles)
     - Resolve step dependencies
     - _Requirements: 2.1, 2.5_
   
-  - [ ] 12.3 Implement sequential execution strategy
+  - [x] 12.3 Implement sequential execution strategy
     - Implement execute_sequential() method
     - Execute steps one at a time in dependency order
     - Update state after each step completion
     - Emit events for each step
     - _Requirements: 2.2, 2.6-2.9_
   
-  - [ ] 12.4 Implement parallel execution strategy
+  - [x] 12.4 Implement parallel execution strategy
     - Implement execute_parallel() method
     - Use asyncio.gather() for independent steps
     - Respect concurrency limits
     - Handle partial failures
     - _Requirements: 2.3, 22.1-22.5_
   
-  - [ ] 12.5 Implement conditional execution strategy
+  - [x] 12.5 Implement conditional execution strategy
     - Implement execute_conditional() method
     - Implement evaluate_condition() method
     - Skip steps when condition evaluates to False
     - _Requirements: 2.4, 23.1-23.5_
   
-  - [ ] 12.6 Implement orchestrate() main method
+  - [x] 12.6 Implement orchestrate() main method
     - Coordinate workflow execution across strategies
     - Integrate with WorkflowExecutor
     - Handle workflow-level error recovery

@@ -1,8 +1,12 @@
 """Workflow executor for executing workflow steps."""
 
-from typing import Any, Dict, Optional
+import asyncio
+from collections import deque
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from agentlegatus.core.event_bus import Event, EventBus, EventType
+from agentlegatus.core.graph import PEGNode, PortableExecutionGraph
 from agentlegatus.core.state import StateManager, StateScope
 from agentlegatus.core.workflow import WorkflowStep
 from agentlegatus.utils.logging import get_logger
@@ -53,20 +57,153 @@ class WorkflowExecutor:
         raise NotImplementedError("execute_step will be implemented in task 11.1")
 
     async def execute_graph(
-        self, graph: Any, initial_state: Dict[str, Any]  # PortableExecutionGraph
+        self, graph: PortableExecutionGraph, initial_state: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Execute a complete portable execution graph.
+
+        Performs topological sort to determine execution order, then executes
+        each node respecting dependencies. Per-node timeouts are enforced
+        via asyncio.wait_for().
 
         Args:
             graph: Portable execution graph to execute
             initial_state: Initial state for execution
 
         Returns:
-            Final execution state
+            Final execution state including all node results
+
+        Raises:
+            ValueError: If graph validation fails
+            asyncio.TimeoutError: If a step exceeds its configured timeout
         """
-        # TODO: Implement in task 11.5
-        raise NotImplementedError("execute_graph will be implemented in task 11.5")
+        # Validate graph before execution
+        is_valid, errors = graph.validate()
+        if not is_valid:
+            raise ValueError(f"Graph validation failed: {', '.join(errors)}")
+
+        # Initialize state from initial_state
+        for key, value in initial_state.items():
+            await self.state_manager.set(key=key, value=value, scope=StateScope.WORKFLOW)
+
+        # Topological sort to determine execution order
+        execution_order = self._topological_sort(graph)
+
+        results: Dict[str, Any] = {}
+
+        for node_id in execution_order:
+            node = graph.get_node(node_id)
+            if node is None:
+                continue
+
+            # Emit StepStarted event
+            await self.event_bus.emit(
+                Event(
+                    event_type=EventType.STEP_STARTED,
+                    timestamp=datetime.now(),
+                    source="WorkflowExecutor",
+                    data={"node_id": node_id, "node_type": node.node_type},
+                )
+            )
+
+            try:
+                result = await self._execute_node_with_timeout(node, results)
+                results[node_id] = result
+
+                # Store result in step scope
+                await self.state_manager.set(
+                    key=f"result_{node_id}", value=result, scope=StateScope.STEP
+                )
+
+                # Emit StepCompleted event
+                await self.event_bus.emit(
+                    Event(
+                        event_type=EventType.STEP_COMPLETED,
+                        timestamp=datetime.now(),
+                        source="WorkflowExecutor",
+                        data={"node_id": node_id, "result": result},
+                    )
+                )
+
+            except Exception as e:
+                # Emit StepFailed event
+                await self.event_bus.emit(
+                    Event(
+                        event_type=EventType.STEP_FAILED,
+                        timestamp=datetime.now(),
+                        source="WorkflowExecutor",
+                        data={
+                            "node_id": node_id,
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                        },
+                    )
+                )
+                raise
+
+        return results
+
+    async def _execute_node_with_timeout(
+        self, node: PEGNode, prior_results: Dict[str, Any]
+    ) -> Any:
+        """
+        Execute a single graph node, enforcing its timeout if configured.
+
+        Args:
+            node: The PEG node to execute
+            prior_results: Results from previously executed nodes
+
+        Returns:
+            Node execution result
+        """
+        timeout = node.config.get("timeout")
+
+        context = {
+            "node_id": node.node_id,
+            "node_type": node.node_type,
+            "config": node.config,
+            "inputs": {inp: prior_results.get(inp) for inp in node.inputs},
+        }
+
+        coro = self.provider.execute_agent(
+            agent=node.config.get("agent"),
+            input_data=context,
+            state=None,
+        )
+
+        if timeout is not None and timeout > 0:
+            return await asyncio.wait_for(coro, timeout=timeout)
+        return await coro
+
+    @staticmethod
+    def _topological_sort(graph: PortableExecutionGraph) -> List[str]:
+        """
+        Kahn's algorithm for topological sort of the graph.
+
+        Args:
+            graph: The portable execution graph
+
+        Returns:
+            List of node IDs in topological order
+        """
+        in_degree: Dict[str, int] = {nid: 0 for nid in graph.nodes}
+        for edge in graph.edges:
+            in_degree[edge.target] += 1
+
+        queue: deque[str] = deque(
+            nid for nid, deg in in_degree.items() if deg == 0
+        )
+        order: List[str] = []
+
+        while queue:
+            nid = queue.popleft()
+            order.append(nid)
+            for successor in graph.get_successors(nid):
+                in_degree[successor] -= 1
+                if in_degree[successor] == 0:
+                    queue.append(successor)
+
+        return order
 
     async def switch_provider(self, new_provider: Any) -> None:  # BaseProvider
         """
