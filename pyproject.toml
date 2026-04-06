@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentlegatus"
-version = "0.1.0"
+version = "0.1.1"
 description = "Vendor-agnostic agent framework abstraction layer - Terraform for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,6 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 all = [
+    "agentscope>=0.1.0",
     "langgraph>=0.1.0",
     "langchain>=0.1.0",
     "redis>=5.0.0",
@@ -45,6 +46,7 @@ all = [
     "structlog>=23.1.0",
 ]
 
+agentscope = ["agentscope>=0.1.0"]
 langgraph = ["langgraph>=0.1.0", "langchain>=0.1.0"]
 redis = ["redis>=5.0.0", "aioredis>=2.0.0"]
 postgres = ["asyncpg>=0.28.0"]
@@ -79,10 +81,10 @@ test = [
 legatus = "agentlegatus.cli.main:cli"
 
 [project.urls]
-Homepage = "https://github.com/agentlegatus/agentlegatus"
+Homepage = "https://github.com/rajacsp/agentlegatus"
 Documentation = "https://agentlegatus.readthedocs.io"
-Repository = "https://github.com/agentlegatus/agentlegatus"
-Issues = "https://github.com/agentlegatus/agentlegatus/issues"
+Repository = "https://github.com/rajacsp/agentlegatus"
+Issues = "https://github.com/rajacsp/agentlegatus/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -141,8 +143,11 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = [
+    "agentscope.*",
     "langgraph.*",
     "langchain.*",
+    "langchain_core.*",
+    "langchain_openai.*",
     "redis.*",
     "aioredis.*",
     "asyncpg.*",

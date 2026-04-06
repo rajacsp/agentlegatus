@@ -5,7 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-04-05
+
+### Added
+
+- `AgentScopeProvider` — new provider adapter for the AgentScope framework with lazy import to avoid package shadowing
+  - Single-agent execution via `ReActAgent` and `UserAgent`
+  - Multi-agent support with three strategies: `SEQUENTIAL` (sequential_pipeline), `FANOUT` (fanout_pipeline), and `DISCUSSION` (MsgHub group chat)
+  - `create_agents()` for batch agent creation, `create_group()` / `execute_group()` for multi-agent orchestration
+  - `MultiAgentStrategy` enum exported from providers package
+- `LangGraphProvider` rewritten to use actual LangGraph API
+  - `StateGraph` with `add_node()`, `add_edge(START, ...)`, `compile()` for graph construction
+  - `compiled_graph.ainvoke()` for async execution
+  - `create_react_agent()` from `langgraph.prebuilt` for tool-calling agents
+  - `build_graph()` convenience method for custom multi-node workflows with conditional edges
+  - `HUMAN_IN_LOOP` capability added
+- `agentscope` optional dependency group in pyproject.toml
+
+### Changed
+
+- Renamed `langgraph.py` → `langgraph_provider.py` to avoid shadowing the `langgraph` package on import
+- Renamed `agentscope.py` → `agentscope_provider.py` to avoid shadowing the `agentscope` package on import
+- Updated all import references across `__init__.py`, `cli/main.py`, and example scripts
+- Updated project URLs from `agentlegatus/agentlegatus` to `rajacsp/agentlegatus`
+- Added `langchain_core` and `langchain_openai` to mypy ignore list
 
 ## [0.1.0] - 2026-04-05
 
@@ -60,5 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sorted all imports via ruff isort rules
 - Updated pyproject.toml ruff config to use `[tool.ruff.lint]` section format
 
-[Unreleased]: https://github.com/agentlegatus/agentlegatus/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/agentlegatus/agentlegatus/releases/tag/v0.1.0
+[Unreleased]: https://github.com/rajacsp/agentlegatus/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/rajacsp/agentlegatus/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/rajacsp/agentlegatus/releases/tag/v0.1.0

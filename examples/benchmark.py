@@ -10,7 +10,7 @@ import asyncio
 from agentlegatus.core.graph import PEGEdge, PEGNode, PortableExecutionGraph
 from agentlegatus.observability.benchmark import BenchmarkEngine
 from agentlegatus.observability.metrics import MetricsCollector
-from agentlegatus.providers.langgraph import LangGraphProvider
+from agentlegatus.providers.langgraph_provider import LangGraphProvider
 from agentlegatus.providers.mock import MockProvider
 from agentlegatus.providers.registry import ProviderRegistry
 

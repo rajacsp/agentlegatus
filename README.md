@@ -4,7 +4,7 @@
 
 Vendor-agnostic agent framework abstraction layer — Terraform for AI Agents.
 
-Switch between AI agent frameworks (LangGraph, AutoGen, CrewAI, Google ADK, AWS Strands, Microsoft Agent Framework) with minimal configuration changes. AgentLegatus provides a unified API, a Roman military hierarchy for orchestrating multi-agent workflows, and built-in benchmarking to compare providers side by side.
+Switch between AI agent frameworks (LangGraph, AgentScope, AutoGen, CrewAI, Google ADK, AWS Strands, Microsoft Agent Framework) with minimal configuration changes. AgentLegatus provides a unified API, a Roman military hierarchy for orchestrating multi-agent workflows, and built-in benchmarking to compare providers side by side.
 
 ## Quick Start
 
@@ -86,6 +86,7 @@ CLI (legatus)
 ## Features
 
 - **Provider Abstraction** — `BaseProvider` interface with runtime switching and state migration via Portable Execution Graphs
+- **Providers** — LangGraph (StateGraph, ReAct agent, conditional edges) and AgentScope (sequential/fanout pipelines, MsgHub group discussion) with lazy imports
 - **Roman Hierarchy** — Legatus → Centurion → Cohort → Agent, with sequential, parallel, and conditional execution strategies
 - **Event-Driven** — Unified `EventBus` with subscription, history, correlation/trace ID propagation
 - **State Management** — Scoped state (workflow/step/agent/global) with snapshot/restore, backed by in-memory, Redis, or Postgres
@@ -101,6 +102,7 @@ CLI (legatus)
 
 ```bash
 pip install -e ".[langgraph]"      # LangGraph provider
+pip install -e ".[agentscope]"     # AgentScope provider
 pip install -e ".[redis]"          # Redis state/memory backend
 pip install -e ".[postgres]"       # Postgres state backend
 pip install -e ".[vector]"         # ChromaDB vector memory

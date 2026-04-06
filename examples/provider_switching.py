@@ -10,7 +10,7 @@ import asyncio
 from agentlegatus.core.event_bus import EventBus, EventType
 from agentlegatus.core.executor import WorkflowExecutor
 from agentlegatus.core.state import InMemoryStateBackend, StateManager, StateScope
-from agentlegatus.providers.langgraph import LangGraphProvider
+from agentlegatus.providers.langgraph_provider import LangGraphProvider
 from agentlegatus.providers.mock import MockProvider
 from agentlegatus.providers.registry import ProviderRegistry
 from agentlegatus.tools.registry import ToolRegistry

@@ -36,7 +36,7 @@ DEFAULT_CONFIG_FILE = "legatus.yaml"
 
 def _get_provider_registry() -> ProviderRegistry:
     """Create a ProviderRegistry with built-in providers registered."""
-    from agentlegatus.providers.langgraph import LangGraphProvider
+    from agentlegatus.providers.langgraph_provider import LangGraphProvider
     from agentlegatus.providers.mock import MockProvider
 
     registry = ProviderRegistry()
