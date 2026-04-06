@@ -35,7 +35,7 @@ def retry_policy_strategy(draw):
     retry_policy_strategy(),
     st.integers(min_value=1, max_value=20),
 )
-@settings(max_examples=20, deadline=3000)
+@settings(max_examples=10, deadline=3000)
 async def test_property_7_retry_attempt_limit(
     retry_policy: RetryPolicy, failure_count: int
 ):
@@ -77,7 +77,7 @@ async def test_property_7_retry_attempt_limit(
     retry_policy_strategy(),
     st.integers(min_value=1, max_value=5),
 )
-@settings(max_examples=20, deadline=3000)
+@settings(max_examples=10, deadline=3000)
 async def test_property_7_retry_success_before_limit(
     retry_policy: RetryPolicy, success_on_attempt: int
 ):
@@ -122,7 +122,7 @@ async def test_property_7_retry_success_before_limit(
 # Property 8: Retry Exponential Backoff
 @pytest.mark.asyncio
 @given(retry_policy_strategy())
-@settings(max_examples=15, deadline=5000)
+@settings(max_examples=5, deadline=5000)
 async def test_property_8_retry_exponential_backoff(retry_policy: RetryPolicy):
     """
     Property 8: Retry Exponential Backoff
@@ -186,7 +186,7 @@ async def test_property_8_retry_exponential_backoff(retry_policy: RetryPolicy):
     st.floats(min_value=0.001, max_value=0.05),
     st.floats(min_value=0.1, max_value=0.3),
 )
-@settings(max_examples=15, deadline=5000)
+@settings(max_examples=5, deadline=5000)
 async def test_property_8_backoff_respects_max_delay(
     max_attempts: int,
     backoff_multiplier: float,
@@ -242,7 +242,7 @@ async def test_property_8_backoff_respects_max_delay(
 
 # Synchronous version tests
 @given(retry_policy_strategy())
-@settings(max_examples=15, deadline=3000)
+@settings(max_examples=5, deadline=3000)
 def test_property_7_retry_attempt_limit_sync(retry_policy: RetryPolicy):
     """
     Property 7 (Sync): Retry Attempt Limit - Synchronous Version

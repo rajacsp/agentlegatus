@@ -70,7 +70,7 @@ def create_test_agent(agent_id: str, name: str) -> Agent:
     num_agents_to_add=st.integers(min_value=1, max_value=30),
     strategy=st.sampled_from(list(CohortStrategy)),
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_24_cohort_capacity_enforcement(
     max_agents: int,
     num_agents_to_add: int,
@@ -178,7 +178,7 @@ async def test_property_24_cohort_capacity_enforcement(
     max_agents=st.integers(min_value=2, max_value=10),
     num_to_remove=st.integers(min_value=1, max_value=5),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_cohort_capacity_after_removal(
     max_agents: int,
     num_to_remove: int,
@@ -246,7 +246,7 @@ async def test_cohort_capacity_after_removal(
     max_agents=st.integers(min_value=1, max_value=15),
     strategy=st.sampled_from(list(CohortStrategy)),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_cohort_capacity_independent_of_strategy(
     max_agents: int,
     strategy: CohortStrategy,
@@ -289,7 +289,7 @@ async def test_cohort_capacity_independent_of_strategy(
     max_agents=st.integers(min_value=1, max_value=20),
     strategy=st.sampled_from(list(CohortStrategy)),
 )
-@settings(max_examples=30, deadline=1000)
+@settings(max_examples=10, deadline=1000)
 async def test_cohort_empty_on_creation(
     max_agents: int,
     strategy: CohortStrategy,

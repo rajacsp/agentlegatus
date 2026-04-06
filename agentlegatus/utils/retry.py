@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from typing import Any, Callable, Optional, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from agentlegatus.core.workflow import RetryPolicy
 
@@ -14,7 +15,7 @@ T = TypeVar("T")
 async def execute_with_retry(
     func: Callable[..., Any],
     *args: Any,
-    retry_policy: Optional[RetryPolicy] = None,
+    retry_policy: RetryPolicy | None = None,
     operation_name: str = "operation",
     **kwargs: Any,
 ) -> Any:
@@ -43,7 +44,7 @@ async def execute_with_retry(
     if not is_valid:
         raise ValueError(f"Invalid retry policy: {', '.join(errors)}")
 
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     delay = retry_policy.initial_delay
 
     for attempt in range(1, retry_policy.max_attempts + 1):
@@ -98,7 +99,7 @@ async def execute_with_retry(
 def execute_with_retry_sync(
     func: Callable[..., T],
     *args: Any,
-    retry_policy: Optional[RetryPolicy] = None,
+    retry_policy: RetryPolicy | None = None,
     operation_name: str = "operation",
     **kwargs: Any,
 ) -> T:
@@ -127,7 +128,7 @@ def execute_with_retry_sync(
     if not is_valid:
         raise ValueError(f"Invalid retry policy: {', '.join(errors)}")
 
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     delay = retry_policy.initial_delay
 
     for attempt in range(1, retry_policy.max_attempts + 1):
@@ -154,6 +155,7 @@ def execute_with_retry_sync(
 
                 # Wait before retrying (synchronous sleep)
                 import time
+
                 time.sleep(delay)
 
                 # Calculate next delay with exponential backoff

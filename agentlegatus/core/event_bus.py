@@ -3,10 +3,11 @@
 import asyncio
 import uuid
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 from agentlegatus.utils.logging import get_logger
 
@@ -38,9 +39,9 @@ class Event:
     event_type: EventType
     timestamp: datetime
     source: str
-    data: Dict[str, Any]
-    correlation_id: Optional[str] = None
-    trace_id: Optional[str] = None
+    data: dict[str, Any]
+    correlation_id: str | None = None
+    trace_id: str | None = None
 
 
 EventHandler = Callable[[Event], Awaitable[None]]
@@ -51,18 +52,18 @@ class EventBus:
 
     def __init__(self) -> None:
         """Initialize event bus."""
-        self._handlers: Dict[EventType, List[tuple[str, EventHandler]]] = defaultdict(list)
-        self._event_history: List[Event] = []
+        self._handlers: dict[EventType, list[tuple[str, EventHandler]]] = defaultdict(list)
+        self._event_history: list[Event] = []
         self._max_history_size = 1000
 
     def subscribe(self, event_type: EventType, handler: EventHandler) -> str:
         """
         Subscribe to an event type.
-        
+
         Args:
             event_type: Type of event to subscribe to
             handler: Async function to handle the event
-            
+
         Returns:
             Subscription ID for unsubscribing
         """
@@ -74,10 +75,10 @@ class EventBus:
     def unsubscribe(self, subscription_id: str) -> bool:
         """
         Unsubscribe from events.
-        
+
         Args:
             subscription_id: Subscription ID returned from subscribe()
-            
+
         Returns:
             True if subscription was found and removed, False otherwise
         """
@@ -92,41 +93,39 @@ class EventBus:
     async def emit(self, event: Event) -> None:
         """
         Emit an event to all subscribers.
-        
+
+        Handlers are invoked concurrently via ``asyncio.gather`` with
+        error isolation — a failing handler does not prevent other
+        handlers from executing.
+
         Args:
             event: Event to emit
         """
         # Add to history
         self._event_history.append(event)
-        
+
         # Trim history if needed
         if len(self._event_history) > self._max_history_size:
             self._event_history = self._event_history[-self._max_history_size :]
 
         # Get handlers for this event type
         handlers = self._handlers.get(event.event_type, [])
-        
+
         if not handlers:
             logger.debug(f"No handlers for event {event.event_type.value}")
             return
 
-        # Invoke all handlers asynchronously (fire-and-forget with error isolation)
-        tasks = []
-        for sub_id, handler in handlers:
-            task = asyncio.create_task(self._invoke_handler(sub_id, handler, event))
-            tasks.append(task)
-
-        # Don't wait for handlers to complete (fire-and-forget)
-        # But we do want to ensure they're scheduled
-        if tasks:
-            await asyncio.sleep(0)  # Yield control to allow tasks to start
+        # Invoke all handlers concurrently with error isolation
+        await asyncio.gather(
+            *(self._invoke_handler(sub_id, handler, event) for sub_id, handler in handlers),
+        )
 
     async def _invoke_handler(
         self, subscription_id: str, handler: EventHandler, event: Event
     ) -> None:
         """
         Invoke a handler with error isolation.
-        
+
         Args:
             subscription_id: Subscription ID
             handler: Handler function
@@ -140,33 +139,33 @@ class EventBus:
                 exc_info=True,
             )
 
-    async def emit_and_wait(self, event: Event, timeout: float = 30.0) -> List[Any]:
+    async def emit_and_wait(self, event: Event, timeout: float = 30.0) -> list[Any]:
         """
         Emit event and wait for all handlers to complete.
-        
+
         Args:
             event: Event to emit
             timeout: Maximum time to wait for handlers
-            
+
         Returns:
             List of handler results
         """
         # Add to history
         self._event_history.append(event)
-        
+
         # Trim history if needed
         if len(self._event_history) > self._max_history_size:
             self._event_history = self._event_history[-self._max_history_size :]
 
         # Get handlers for this event type
         handlers = self._handlers.get(event.event_type, [])
-        
+
         if not handlers:
             return []
 
         # Invoke all handlers and wait for completion
         tasks = [self._invoke_handler_with_result(handler, event) for _, handler in handlers]
-        
+
         try:
             results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
             return results
@@ -177,11 +176,11 @@ class EventBus:
     async def _invoke_handler_with_result(self, handler: EventHandler, event: Event) -> Any:
         """
         Invoke a handler and return its result.
-        
+
         Args:
             handler: Handler function
             event: Event to pass to handler
-            
+
         Returns:
             Handler result or None if error
         """
@@ -193,18 +192,18 @@ class EventBus:
 
     def get_event_history(
         self,
-        event_type: Optional[EventType] = None,
-        since: Optional[datetime] = None,
+        event_type: EventType | None = None,
+        since: datetime | None = None,
         limit: int = 100,
-    ) -> List[Event]:
+    ) -> list[Event]:
         """
         Get event history with optional filtering.
-        
+
         Args:
             event_type: Filter by event type
             since: Filter events after this timestamp
             limit: Maximum number of events to return
-            
+
         Returns:
             List of events matching filters
         """

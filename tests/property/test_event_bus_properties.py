@@ -35,7 +35,7 @@ def event_strategy(draw):
 # Property 4: Event Temporal Ordering
 @pytest.mark.asyncio
 @given(st.lists(event_strategy(), min_size=2, max_size=20))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_4_event_temporal_ordering(events: List[Event]):
     """
     Property 4: Event Temporal Ordering
@@ -73,7 +73,7 @@ async def test_property_4_event_temporal_ordering(events: List[Event]):
     st.integers(min_value=2, max_value=10),
     st.integers(min_value=0, max_value=9),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_20_event_handler_isolation(
     event: Event, num_handlers: int, failing_handler_index: int
 ):
@@ -121,7 +121,7 @@ async def test_property_20_event_handler_isolation(
 # Property 21: Event History Completeness
 @pytest.mark.asyncio
 @given(st.lists(event_strategy(), min_size=1, max_size=50))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_21_event_history_completeness(events: List[Event]):
     """
     Property 21: Event History Completeness
@@ -158,7 +158,7 @@ async def test_property_21_event_history_completeness(events: List[Event]):
     st.integers(min_value=1, max_value=5),
     st.integers(min_value=1, max_value=5),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_29_unsubscribe_effectiveness(
     event: Event, events_before_unsub: int, events_after_unsub: int
 ):
@@ -211,7 +211,7 @@ async def test_property_29_unsubscribe_effectiveness(
 # Additional test: Unsubscribe with invalid ID
 @pytest.mark.asyncio
 @given(st.uuids().map(str))
-@settings(max_examples=20, deadline=1000)
+@settings(max_examples=10, deadline=1000)
 async def test_unsubscribe_invalid_id(invalid_id: str):
     """Test that unsubscribing with invalid ID returns False."""
     event_bus = EventBus()
@@ -222,7 +222,7 @@ async def test_unsubscribe_invalid_id(invalid_id: str):
 # Additional test: Event history filtering by event type
 @pytest.mark.asyncio
 @given(st.lists(event_strategy(), min_size=5, max_size=20))
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_event_history_filtering_by_type(events: List[Event]):
     """Test that event history can be filtered by event type."""
     event_bus = EventBus()

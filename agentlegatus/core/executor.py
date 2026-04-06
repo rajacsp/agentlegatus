@@ -3,13 +3,14 @@
 import asyncio
 from collections import deque
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agentlegatus.core.event_bus import Event, EventBus, EventType
 from agentlegatus.core.graph import PEGNode, PortableExecutionGraph
 from agentlegatus.core.state import StateManager, StateScope
 from agentlegatus.core.workflow import WorkflowStep
-from agentlegatus.utils.logging import get_logger
+from agentlegatus.exceptions import ProviderSwitchError
+from agentlegatus.utils.logging import get_logger, log_error
 
 logger = get_logger(__name__)
 
@@ -37,12 +38,10 @@ class WorkflowExecutor:
         self.state_manager = state_manager
         self.tool_registry = tool_registry
         self.event_bus = event_bus
-        self._current_workflow_id: Optional[str] = None
+        self._current_workflow_id: str | None = None
         self._completed_steps: set[str] = set()
 
-    async def execute_step(
-        self, step: WorkflowStep, context: Dict[str, Any]
-    ) -> Any:
+    async def execute_step(self, step: WorkflowStep, context: dict[str, Any]) -> Any:
         """
         Execute a single workflow step.
 
@@ -57,14 +56,15 @@ class WorkflowExecutor:
         raise NotImplementedError("execute_step will be implemented in task 11.1")
 
     async def execute_graph(
-        self, graph: PortableExecutionGraph, initial_state: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, graph: PortableExecutionGraph, initial_state: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Execute a complete portable execution graph.
 
-        Performs topological sort to determine execution order, then executes
-        each node respecting dependencies. Per-node timeouts are enforced
-        via asyncio.wait_for().
+        Uses Kahn's algorithm to identify independent nodes and runs them
+        concurrently via ``asyncio.gather``, falling back to sequential
+        execution when dependencies exist.  Per-node timeouts are enforced
+        via ``asyncio.wait_for()``.
 
         Args:
             graph: Portable execution graph to execute
@@ -86,66 +86,89 @@ class WorkflowExecutor:
         for key, value in initial_state.items():
             await self.state_manager.set(key=key, value=value, scope=StateScope.WORKFLOW)
 
-        # Topological sort to determine execution order
-        execution_order = self._topological_sort(graph)
+        # Build in-degree map for Kahn's parallel scheduling
+        in_degree: dict[str, int] = dict.fromkeys(graph.nodes, 0)
+        for edge in graph.edges:
+            in_degree[edge.target] += 1
 
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
+        remaining = set(graph.nodes.keys())
 
-        for node_id in execution_order:
-            node = graph.get_node(node_id)
-            if node is None:
-                continue
+        while remaining:
+            # Collect all nodes whose dependencies are satisfied
+            ready = [nid for nid in remaining if in_degree[nid] == 0]
+            if not ready:
+                raise RuntimeError("Deadlock: no nodes are ready but some remain")
 
-            # Emit StepStarted event
-            await self.event_bus.emit(
-                Event(
-                    event_type=EventType.STEP_STARTED,
-                    timestamp=datetime.now(),
-                    source="WorkflowExecutor",
-                    data={"node_id": node_id, "node_type": node.node_type},
-                )
-            )
+            # Execute ready nodes concurrently
+            async def _run_node(node_id: str) -> None:
+                node = graph.get_node(node_id)
+                if node is None:
+                    return
 
-            try:
-                result = await self._execute_node_with_timeout(node, results)
-                results[node_id] = result
-
-                # Store result in step scope
-                await self.state_manager.set(
-                    key=f"result_{node_id}", value=result, scope=StateScope.STEP
-                )
-
-                # Emit StepCompleted event
                 await self.event_bus.emit(
                     Event(
-                        event_type=EventType.STEP_COMPLETED,
+                        event_type=EventType.STEP_STARTED,
                         timestamp=datetime.now(),
                         source="WorkflowExecutor",
-                        data={"node_id": node_id, "result": result},
+                        data={"node_id": node_id, "node_type": node.node_type},
                     )
                 )
 
-            except Exception as e:
-                # Emit StepFailed event
-                await self.event_bus.emit(
-                    Event(
-                        event_type=EventType.STEP_FAILED,
-                        timestamp=datetime.now(),
-                        source="WorkflowExecutor",
-                        data={
-                            "node_id": node_id,
-                            "error": str(e),
-                            "error_type": type(e).__name__,
-                        },
+                try:
+                    result = await self._execute_node_with_timeout(node, results)
+                    results[node_id] = result
+
+                    await self.state_manager.set(
+                        key=f"result_{node_id}", value=result, scope=StateScope.STEP
                     )
-                )
-                raise
+
+                    await self.event_bus.emit(
+                        Event(
+                            event_type=EventType.STEP_COMPLETED,
+                            timestamp=datetime.now(),
+                            source="WorkflowExecutor",
+                            data={"node_id": node_id, "result": result},
+                        )
+                    )
+                except Exception as e:
+                    log_error(
+                        logger,
+                        f"Graph node '{node_id}' execution failed",
+                        e,
+                        node_id=node_id,
+                        node_type=node.node_type,
+                        workflow_id=self._current_workflow_id,
+                    )
+
+                    await self.event_bus.emit(
+                        Event(
+                            event_type=EventType.STEP_FAILED,
+                            timestamp=datetime.now(),
+                            source="WorkflowExecutor",
+                            data={
+                                "node_id": node_id,
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                            },
+                        )
+                    )
+                    raise
+
+            if len(ready) == 1:
+                await _run_node(ready[0])
+            else:
+                await asyncio.gather(*(_run_node(nid) for nid in ready))
+
+            # Update in-degrees for successors
+            for nid in ready:
+                remaining.discard(nid)
+                for successor in graph.get_successors(nid):
+                    in_degree[successor] -= 1
 
         return results
 
-    async def _execute_node_with_timeout(
-        self, node: PEGNode, prior_results: Dict[str, Any]
-    ) -> Any:
+    async def _execute_node_with_timeout(self, node: PEGNode, prior_results: dict[str, Any]) -> Any:
         """
         Execute a single graph node, enforcing its timeout if configured.
 
@@ -176,7 +199,7 @@ class WorkflowExecutor:
         return await coro
 
     @staticmethod
-    def _topological_sort(graph: PortableExecutionGraph) -> List[str]:
+    def _topological_sort(graph: PortableExecutionGraph) -> list[str]:
         """
         Kahn's algorithm for topological sort of the graph.
 
@@ -186,14 +209,12 @@ class WorkflowExecutor:
         Returns:
             List of node IDs in topological order
         """
-        in_degree: Dict[str, int] = {nid: 0 for nid in graph.nodes}
+        in_degree: dict[str, int] = dict.fromkeys(graph.nodes, 0)
         for edge in graph.edges:
             in_degree[edge.target] += 1
 
-        queue: deque[str] = deque(
-            nid for nid, deg in in_degree.items() if deg == 0
-        )
-        order: List[str] = []
+        queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
+        order: list[str] = []
 
         while queue:
             nid = queue.popleft()
@@ -242,6 +263,7 @@ class WorkflowExecutor:
         old_provider = self.provider
         old_provider_name = type(old_provider).__name__
         new_provider_name = type(new_provider).__name__
+        exported_state = {}
 
         try:
             # Step 1: Export state from current provider (Requirement 5.1)
@@ -266,6 +288,7 @@ class WorkflowExecutor:
                 # If no workflow is stored, create an empty portable graph
                 # This handles the case where we're switching before any workflow execution
                 from agentlegatus.core.graph import PortableExecutionGraph
+
                 portable_graph = PortableExecutionGraph()
                 logger.warning("No current workflow found, using empty portable graph")
 
@@ -300,9 +323,7 @@ class WorkflowExecutor:
             self.provider = new_provider
 
             # Step 7: Emit ProviderSwitched event (Requirement 5.8)
-            logger.info(
-                f"Provider switch successful: {old_provider_name} -> {new_provider_name}"
-            )
+            logger.info(f"Provider switch successful: {old_provider_name} -> {new_provider_name}")
 
             await self.event_bus.emit(
                 Event(
@@ -321,14 +342,28 @@ class WorkflowExecutor:
             )
 
         except Exception as e:
-            logger.error(
-                f"Provider switch failed: {old_provider_name} -> {new_provider_name}. "
-                f"Error: {e}",
-                exc_info=True,
+            log_error(
+                logger,
+                f"Provider switch failed: {old_provider_name} -> {new_provider_name}",
+                e,
+                old_provider=old_provider_name,
+                new_provider=new_provider_name,
+                workflow_id=self._current_workflow_id,
             )
-            # Rollback: Keep the old provider
+            # Rollback: Keep the old provider (Requirement 15.8)
             self.provider = old_provider
-            raise
+            # Re-import original state to ensure consistency
+            try:
+                old_provider.import_state(exported_state)
+            except Exception:
+                pass  # best-effort rollback of state
+
+            raise ProviderSwitchError(
+                old_provider=old_provider_name,
+                new_provider=new_provider_name,
+                reason=str(e),
+                original_error=e,
+            ) from e
 
     async def checkpoint_state(self, checkpoint_id: str) -> None:
         """
@@ -373,10 +408,16 @@ class WorkflowExecutor:
             )
 
         except Exception as e:
-            logger.error(f"Failed to create checkpoint {checkpoint_id}: {e}", exc_info=True)
+            log_error(
+                logger,
+                f"Failed to create checkpoint {checkpoint_id}",
+                e,
+                checkpoint_id=checkpoint_id,
+                workflow_id=self._current_workflow_id,
+            )
             raise
 
-    async def restore_from_checkpoint(self, checkpoint_id: str) -> Dict[str, Any]:
+    async def restore_from_checkpoint(self, checkpoint_id: str) -> dict[str, Any]:
         """
         Restore execution from a checkpoint.
 
@@ -433,7 +474,11 @@ class WorkflowExecutor:
             }
 
         except Exception as e:
-            logger.error(
-                f"Failed to restore from checkpoint {checkpoint_id}: {e}", exc_info=True
+            log_error(
+                logger,
+                f"Failed to restore from checkpoint {checkpoint_id}",
+                e,
+                checkpoint_id=checkpoint_id,
+                workflow_id=self._current_workflow_id,
             )
             raise

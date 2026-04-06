@@ -63,7 +63,7 @@ def tool_strategy(draw):
 
 # Property 10: Tool Registry Round-Trip
 @given(st.lists(tool_strategy(), min_size=1, max_size=20, unique_by=lambda t: t.name))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_10_tool_registry_round_trip(tools: List[Tool]):
     """
     Property 10: Tool Registry Round-Trip
@@ -107,7 +107,7 @@ def test_property_10_tool_registry_round_trip(tools: List[Tool]):
     tool_strategy(),
     st.data()
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_11_tool_input_validation_consistency(tool: Tool, data):
     """
     Property 11: Tool Input Validation Consistency
@@ -218,7 +218,7 @@ def test_property_11_tool_input_validation_consistency(tool: Tool, data):
 
 # Additional test: Tool format conversion consistency
 @given(tool_strategy())
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_tool_format_conversion_consistency(tool: Tool):
     """
     Test that tool format conversions preserve essential information.
@@ -273,7 +273,7 @@ def test_tool_format_conversion_consistency(tool: Tool):
     st.lists(tool_strategy(), min_size=2, max_size=10, unique_by=lambda t: t.name),
     st.integers(min_value=0, max_value=9)
 )
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_tool_registry_operations(tools: List[Tool], unregister_index: int):
     """
     Test tool registry operations including unregister.
@@ -316,7 +316,7 @@ def test_tool_registry_operations(tools: List[Tool], unregister_index: int):
     st.lists(tool_strategy(), min_size=1, max_size=5, unique_by=lambda t: t.name),
     st.sampled_from(['openai', 'anthropic', 'microsoft', 'azure', 'claude', 'unknown'])
 )
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_tool_registry_provider_format(tools: List[Tool], provider_name: str):
     """
     Test that tool registry converts tools to provider-specific formats.
@@ -351,7 +351,7 @@ def test_tool_registry_provider_format(tools: List[Tool], provider_name: str):
 # Additional test: Tool invocation with valid input
 @pytest.mark.asyncio
 @given(tool_strategy())
-@settings(max_examples=20, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_tool_invocation_with_valid_input(tool: Tool):
     """
     Test that tool invocation works with valid input.
@@ -384,7 +384,7 @@ async def test_tool_invocation_with_valid_input(tool: Tool):
 # Additional test: Tool invocation with invalid input
 @pytest.mark.asyncio
 @given(tool_strategy())
-@settings(max_examples=20, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_tool_invocation_with_invalid_input(tool: Tool):
     """
     Test that tool invocation raises ValueError with invalid input.

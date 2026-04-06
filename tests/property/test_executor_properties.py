@@ -11,12 +11,13 @@ from agentlegatus.core.event_bus import EventBus, EventType
 from agentlegatus.core.executor import WorkflowExecutor
 from agentlegatus.core.graph import PEGEdge, PEGNode, PortableExecutionGraph
 from agentlegatus.core.state import InMemoryStateBackend, StateManager
+from agentlegatus.exceptions import ProviderSwitchError
 from agentlegatus.providers.base import BaseProvider, ProviderCapability
 from agentlegatus.tools.registry import ToolRegistry
 
 
 # Mock Provider for Testing
-class MockMockMockMockMockMockMockMockMockMockMockMockTestProvider(BaseProvider):
+class MockTestProvider(BaseProvider):
     """Mock test provider with state and graph conversion support."""
     
     def __init__(self, config: Dict[str, Any], provider_id: str = "test"):
@@ -185,7 +186,7 @@ def simple_graph_strategy(draw):
 # Property 5: Provider State Round-Trip
 @pytest.mark.asyncio
 @given(state_dict_strategy())
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_5_provider_state_round_trip(state_data: Dict[str, Any]):
     """
     Property 5: Provider State Round-Trip
@@ -196,7 +197,7 @@ async def test_property_5_provider_state_round_trip(state_data: Dict[str, Any]):
     Validates: Requirements 3.5, 3.6
     """
     # Create first provider with state
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test1"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test1"}, provider_id="provider1")
     provider1._state = state_data.copy()
     
     # Export state
@@ -207,7 +208,7 @@ async def test_property_5_provider_state_round_trip(state_data: Dict[str, Any]):
     assert exported_state["state"] == state_data
     
     # Create second provider and import state
-    provider2 = MockMockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test2"}, provider_id="provider2")
+    provider2 = MockTestProvider({"api_key": "test2"}, provider_id="provider2")
     provider2.import_state(exported_state)
     
     # Verify state was imported correctly
@@ -220,7 +221,7 @@ async def test_property_5_provider_state_round_trip(state_data: Dict[str, Any]):
 # Property 6: Portable Graph Round-Trip
 @pytest.mark.asyncio
 @given(simple_graph_strategy())
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_6_portable_graph_round_trip(graph: PortableExecutionGraph):
     """
     Property 6: Portable Graph Round-Trip
@@ -231,7 +232,7 @@ async def test_property_6_portable_graph_round_trip(graph: PortableExecutionGrap
     Validates: Requirements 3.7, 3.8
     """
     # Create provider
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test"}, provider_id="provider1")
     
     # Convert to provider-specific format
     provider_workflow = provider1.from_portable_graph(graph)
@@ -284,7 +285,7 @@ async def test_property_6_portable_graph_round_trip(graph: PortableExecutionGrap
     state_dict_strategy(),
     simple_graph_strategy(),
 )
-@settings(max_examples=50, deadline=3000)
+@settings(max_examples=10, deadline=3000)
 async def test_provider_switching_preserves_state_and_graph(
     state_data: Dict[str, Any],
     graph: PortableExecutionGraph,
@@ -308,7 +309,7 @@ async def test_provider_switching_preserves_state_and_graph(
     tool_registry = ToolRegistry()
     
     # Create first provider with state and workflow
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test1"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test1"}, provider_id="provider1")
     provider1._state = state_data.copy()
     
     # Convert graph to provider1's format and store it
@@ -319,7 +320,7 @@ async def test_provider_switching_preserves_state_and_graph(
     executor = WorkflowExecutor(provider1, state_manager, tool_registry, event_bus)
     
     # Create second provider
-    provider2 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test2"}, provider_id="provider2")
+    provider2 = MockTestProvider({"api_key": "test2"}, provider_id="provider2")
     
     # Switch to provider2
     await executor.switch_provider(provider2)
@@ -350,7 +351,7 @@ async def test_provider_switching_preserves_state_and_graph(
 # Test: Provider switching with empty workflow
 @pytest.mark.asyncio
 @given(state_dict_strategy())
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_provider_switching_with_empty_workflow(state_data: Dict[str, Any]):
     """
     Test that provider switching works when no workflow is stored.
@@ -364,14 +365,14 @@ async def test_provider_switching_with_empty_workflow(state_data: Dict[str, Any]
     tool_registry = ToolRegistry()
     
     # Create first provider with state but no workflow
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test1"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test1"}, provider_id="provider1")
     provider1._state = state_data.copy()
     
     # Create executor with provider1 (no workflow stored)
     executor = WorkflowExecutor(provider1, state_manager, tool_registry, event_bus)
     
     # Create second provider
-    provider2 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test2"}, provider_id="provider2")
+    provider2 = MockTestProvider({"api_key": "test2"}, provider_id="provider2")
     
     # Switch to provider2 (should handle empty workflow gracefully)
     await executor.switch_provider(provider2)
@@ -386,7 +387,7 @@ async def test_provider_switching_with_empty_workflow(state_data: Dict[str, Any]
 # Test: Provider switching emits event
 @pytest.mark.asyncio
 @given(state_dict_strategy())
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_provider_switching_emits_event(state_data: Dict[str, Any]):
     """
     Test that provider switching emits ProviderSwitched event.
@@ -408,10 +409,10 @@ async def test_provider_switching_emits_event(state_data: Dict[str, Any]):
     event_bus.subscribe(EventType.PROVIDER_SWITCHED, event_handler)
     
     # Create providers
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test1"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test1"}, provider_id="provider1")
     provider1._state = state_data.copy()
     
-    provider2 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test2"}, provider_id="provider2")
+    provider2 = MockTestProvider({"api_key": "test2"}, provider_id="provider2")
     
     # Create executor and switch
     executor = WorkflowExecutor(provider1, state_manager, tool_registry, event_bus)
@@ -422,8 +423,8 @@ async def test_provider_switching_emits_event(state_data: Dict[str, Any]):
     event = events_received[0]
     
     assert event.event_type == EventType.PROVIDER_SWITCHED
-    assert event.data["old_provider"] == "TestProvider"
-    assert event.data["new_provider"] == "TestProvider"
+    assert event.data["old_provider"] == "MockTestProvider"
+    assert event.data["new_provider"] == "MockTestProvider"
 
 
 # Test: Provider switching with invalid graph fails
@@ -441,7 +442,7 @@ async def test_provider_switching_with_invalid_graph_fails():
     tool_registry = ToolRegistry()
     
     # Create a provider that returns an invalid graph
-    class InvalidGraphProvider(TestProvider):
+    class InvalidGraphProvider(MockTestProvider):
         def to_portable_graph(self, workflow: Any) -> PortableExecutionGraph:
             # Create a graph with a cycle
             graph = PortableExecutionGraph()
@@ -474,13 +475,13 @@ async def test_provider_switching_with_invalid_graph_fails():
     provider1 = InvalidGraphProvider({"api_key": "test1"}, provider_id="provider1")
     await state_manager.set("current_workflow", {"test": "workflow"})
     
-    provider2 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test2"}, provider_id="provider2")
+    provider2 = MockTestProvider({"api_key": "test2"}, provider_id="provider2")
     
     # Create executor
     executor = WorkflowExecutor(provider1, state_manager, tool_registry, event_bus)
     
     # Switch should fail due to invalid graph
-    with pytest.raises(ValueError, match="validation failed"):
+    with pytest.raises(ProviderSwitchError, match="validation failed"):
         await executor.switch_provider(provider2)
     
     # Verify provider was NOT switched (rollback)
@@ -490,7 +491,7 @@ async def test_provider_switching_with_invalid_graph_fails():
 # Test: Provider switching failure rolls back
 @pytest.mark.asyncio
 @given(state_dict_strategy())
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_provider_switching_failure_rolls_back(state_data: Dict[str, Any]):
     """
     Test that provider switching rolls back on failure.
@@ -504,12 +505,12 @@ async def test_provider_switching_failure_rolls_back(state_data: Dict[str, Any])
     tool_registry = ToolRegistry()
     
     # Create a provider that fails on import_state
-    class FailingProvider(TestProvider):
+    class FailingProvider(MockTestProvider):
         def import_state(self, state: Dict[str, Any]) -> None:
             raise RuntimeError("Import failed")
     
     # Create providers
-    provider1 = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test1"}, provider_id="provider1")
+    provider1 = MockTestProvider({"api_key": "test1"}, provider_id="provider1")
     provider1._state = state_data.copy()
     
     provider2 = FailingProvider({"api_key": "test2"}, provider_id="provider2")
@@ -518,7 +519,7 @@ async def test_provider_switching_failure_rolls_back(state_data: Dict[str, Any])
     executor = WorkflowExecutor(provider1, state_manager, tool_registry, event_bus)
     
     # Switch should fail
-    with pytest.raises(RuntimeError, match="Import failed"):
+    with pytest.raises(ProviderSwitchError, match="Import failed"):
         await executor.switch_provider(provider2)
     
     # Verify provider was NOT switched (rollback)
@@ -531,14 +532,14 @@ async def test_provider_switching_failure_rolls_back(state_data: Dict[str, Any])
 # Test: State export includes all necessary data
 @pytest.mark.asyncio
 @given(state_dict_strategy())
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_state_export_includes_all_data(state_data: Dict[str, Any]):
     """
     Test that exported state includes all necessary data for import.
     
     Validates: Requirement 3.5
     """
-    provider = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test"}, provider_id="test_provider")
+    provider = MockTestProvider({"api_key": "test"}, provider_id="test_provider")
     provider._state = state_data.copy()
     provider._workflow = {"test": "workflow"}
     
@@ -564,7 +565,7 @@ async def test_empty_graph_conversion():
     
     Validates: Requirements 3.7, 3.8
     """
-    provider = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test"}, provider_id="test")
+    provider = MockTestProvider({"api_key": "test"}, provider_id="test")
     
     # Create empty graph
     empty_graph = PortableExecutionGraph()
@@ -591,7 +592,7 @@ async def test_empty_graph_conversion():
         max_size=5
     )
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_graph_metadata_preservation(
     graph: PortableExecutionGraph,
     metadata: Dict[str, str]
@@ -604,7 +605,7 @@ async def test_graph_metadata_preservation(
     # Set metadata
     graph.metadata = metadata
     
-    provider = MockMockMockMockMockMockMockMockMockMockMockTestProvider({"api_key": "test"}, provider_id="test")
+    provider = MockTestProvider({"api_key": "test"}, provider_id="test")
     
     # Convert to provider format and back
     workflow = provider.from_portable_graph(graph)

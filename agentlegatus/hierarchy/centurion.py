@@ -2,8 +2,9 @@
 
 import asyncio
 from collections import deque
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from agentlegatus.core.event_bus import Event, EventBus, EventType
 from agentlegatus.core.executor import WorkflowExecutor
@@ -14,7 +15,7 @@ from agentlegatus.core.workflow import (
     WorkflowStep,
 )
 from agentlegatus.hierarchy.cohort import Cohort
-from agentlegatus.utils.logging import get_logger
+from agentlegatus.utils.logging import get_logger, log_error
 from agentlegatus.utils.retry import execute_with_retry
 
 logger = get_logger(__name__)
@@ -47,8 +48,8 @@ class Centurion:
         self.strategy = strategy
         self.event_bus = event_bus
 
-        self._cohorts: Dict[str, Cohort] = {}
-        self._executor: Optional[WorkflowExecutor] = None
+        self._cohorts: dict[str, Cohort] = {}
+        self._executor: WorkflowExecutor | None = None
 
     async def add_cohort(self, cohort: Cohort) -> None:
         """Register a Cohort of agents.
@@ -59,10 +60,7 @@ class Centurion:
         self._cohorts[cohort.name] = cohort
         logger.debug(f"Centurion '{self.name}' registered cohort '{cohort.name}'")
 
-
-    def build_execution_plan(
-        self, steps: List[WorkflowStep]
-    ) -> List[WorkflowStep]:
+    def build_execution_plan(self, steps: list[WorkflowStep]) -> list[WorkflowStep]:
         """Build an execution plan using topological sort.
 
         Validates that the step dependency graph forms a valid DAG (no
@@ -78,31 +76,27 @@ class Centurion:
             ValueError: If the dependency graph contains cycles or
                         references non-existent steps
         """
-        step_map: Dict[str, WorkflowStep] = {s.step_id: s for s in steps}
+        step_map: dict[str, WorkflowStep] = {s.step_id: s for s in steps}
         all_ids = set(step_map.keys())
 
         # Validate all dependencies reference existing steps
         for step in steps:
             for dep in step.depends_on:
                 if dep not in all_ids:
-                    raise ValueError(
-                        f"Step '{step.step_id}' depends on non-existent step '{dep}'"
-                    )
+                    raise ValueError(f"Step '{step.step_id}' depends on non-existent step '{dep}'")
 
         # Kahn's algorithm for topological sort
-        in_degree: Dict[str, int] = {sid: 0 for sid in all_ids}
+        in_degree: dict[str, int] = dict.fromkeys(all_ids, 0)
         # Build adjacency: dep -> step (dep must run before step)
-        adjacency: Dict[str, List[str]] = {sid: [] for sid in all_ids}
+        adjacency: dict[str, list[str]] = {sid: [] for sid in all_ids}
 
         for step in steps:
             for dep in step.depends_on:
                 adjacency[dep].append(step.step_id)
                 in_degree[step.step_id] += 1
 
-        queue: deque[str] = deque(
-            sid for sid, deg in in_degree.items() if deg == 0
-        )
-        order: List[str] = []
+        queue: deque[str] = deque(sid for sid, deg in in_degree.items() if deg == 0)
+        order: list[str] = []
 
         while queue:
             sid = queue.popleft()
@@ -114,8 +108,7 @@ class Centurion:
 
         if len(order) != len(all_ids):
             raise ValueError(
-                "Workflow step dependencies contain a cycle — "
-                "steps do not form a valid DAG"
+                "Workflow step dependencies contain a cycle — " "steps do not form a valid DAG"
             )
 
         return [step_map[sid] for sid in order]
@@ -126,10 +119,10 @@ class Centurion:
 
     async def execute_sequential(
         self,
-        execution_plan: List[WorkflowStep],
+        execution_plan: list[WorkflowStep],
         executor: WorkflowExecutor,
         state_manager: StateManager,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute workflow steps one at a time in dependency order.
 
         Args:
@@ -154,11 +147,11 @@ class Centurion:
 
     async def execute_parallel(
         self,
-        execution_plan: List[WorkflowStep],
+        execution_plan: list[WorkflowStep],
         executor: WorkflowExecutor,
         state_manager: StateManager,
         max_concurrency: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute independent steps concurrently, respecting dependencies.
 
         Steps whose dependencies are all satisfied are launched together
@@ -178,7 +171,7 @@ class Centurion:
             Exception: Propagates the first step failure encountered
         """
         completed: set[str] = set()
-        step_map: Dict[str, WorkflowStep] = {s.step_id: s for s in execution_plan}
+        step_map: dict[str, WorkflowStep] = {s.step_id: s for s in execution_plan}
         remaining = set(step_map.keys())
 
         while remaining:
@@ -190,19 +183,14 @@ class Centurion:
             ]
 
             if not ready:
-                raise RuntimeError(
-                    "Deadlock detected: no steps are ready but some remain"
-                )
+                raise RuntimeError("Deadlock detected: no steps are ready but some remain")
 
             # Apply concurrency limit
             if max_concurrency > 0:
                 ready = ready[:max_concurrency]
 
             # Launch ready steps concurrently
-            tasks = [
-                self._execute_single_step(step, executor, state_manager)
-                for step in ready
-            ]
+            tasks = [self._execute_single_step(step, executor, state_manager) for step in ready]
 
             try:
                 await asyncio.gather(*tasks)
@@ -223,10 +211,10 @@ class Centurion:
 
     async def execute_conditional(
         self,
-        execution_plan: List[WorkflowStep],
+        execution_plan: list[WorkflowStep],
         executor: WorkflowExecutor,
         state_manager: StateManager,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute steps with conditional evaluation.
 
         For each step, if a ``condition`` callable is present in the
@@ -249,17 +237,11 @@ class Centurion:
             condition = step.config.get("condition")
 
             if condition is not None:
-                workflow_state = await state_manager.get_all(
-                    scope=StateScope.WORKFLOW
-                )
-                should_execute = await self.evaluate_condition(
-                    condition, workflow_state
-                )
+                workflow_state = await state_manager.get_all(scope=StateScope.WORKFLOW)
+                should_execute = await self.evaluate_condition(condition, workflow_state)
 
                 if not should_execute:
-                    logger.info(
-                        f"Step '{step.step_id}' skipped — condition evaluated to False"
-                    )
+                    logger.info(f"Step '{step.step_id}' skipped — condition evaluated to False")
                     await state_manager.set(
                         f"step_{step.step_id}_status",
                         "skipped",
@@ -273,8 +255,8 @@ class Centurion:
 
     async def evaluate_condition(
         self,
-        condition: Callable[[Dict[str, Any]], bool],
-        state: Dict[str, Any],
+        condition: Callable[[dict[str, Any]], bool],
+        state: dict[str, Any],
     ) -> bool:
         """Evaluate a conditional branching expression.
 
@@ -295,7 +277,6 @@ class Centurion:
             result = await result
         return bool(result)
 
-
     # ------------------------------------------------------------------
     # Orchestrate (main entry point)
     # ------------------------------------------------------------------
@@ -304,8 +285,8 @@ class Centurion:
         self,
         workflow_def: WorkflowDefinition,
         state_manager: StateManager,
-        executor: Optional[WorkflowExecutor] = None,
-    ) -> Dict[str, Any]:
+        executor: WorkflowExecutor | None = None,
+    ) -> dict[str, Any]:
         """Orchestrate workflow execution across strategies.
 
         This is the main entry point called by the Legatus. It builds
@@ -354,7 +335,9 @@ class Centurion:
             elif self.strategy == ExecutionStrategy.PARALLEL:
                 max_conc = workflow_def.metadata.get("max_concurrency", 0)
                 result = await self.execute_parallel(
-                    execution_plan, self._executor, state_manager,
+                    execution_plan,
+                    self._executor,
+                    state_manager,
                     max_concurrency=max_conc,
                 )
             elif self.strategy == ExecutionStrategy.CONDITIONAL:
@@ -362,20 +345,19 @@ class Centurion:
                     execution_plan, self._executor, state_manager
                 )
             else:
-                raise ValueError(
-                    f"Unknown execution strategy: {self.strategy}"
-                )
+                raise ValueError(f"Unknown execution strategy: {self.strategy}")
         except Exception as e:
-            logger.error(
-                f"Centurion '{self.name}' workflow "
-                f"'{workflow_def.workflow_id}' failed: {e}"
+            log_error(
+                logger,
+                f"Centurion '{self.name}' workflow " f"'{workflow_def.workflow_id}' failed",
+                e,
+                workflow_id=workflow_def.workflow_id,
+                centurion=self.name,
+                strategy=self.strategy.value,
             )
             raise
 
-        logger.info(
-            f"Centurion '{self.name}' completed workflow "
-            f"'{workflow_def.workflow_id}'"
-        )
+        logger.info(f"Centurion '{self.name}' completed workflow " f"'{workflow_def.workflow_id}'")
         return result
 
     # ------------------------------------------------------------------
@@ -451,6 +433,16 @@ class Centurion:
             return result
 
         except Exception as e:
+            # Log with full context (Req 16.10)
+            log_error(
+                logger,
+                f"Step '{step.step_id}' execution failed",
+                e,
+                step_id=step.step_id,
+                step_type=step.step_type,
+                centurion=self.name,
+            )
+
             # Emit StepFailed
             await self.event_bus.emit(
                 Event(

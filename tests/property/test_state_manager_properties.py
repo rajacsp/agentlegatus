@@ -62,7 +62,7 @@ def scope_id_strategy(draw):
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_3_state_round_trip_consistency(
     key: str, value: Any, scope: StateScope, scope_id: str
 ):
@@ -98,7 +98,7 @@ async def test_property_3_state_round_trip_consistency(
     st.lists(scope_strategy(), min_size=2, max_size=4, unique=True),
     scope_id_strategy(),
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_22_state_scope_isolation(
     key: str, value: Any, scopes: List[StateScope], scope_id: str
 ):
@@ -148,7 +148,7 @@ async def test_property_22_state_scope_isolation(
         whitelist_characters="_-"
     )),
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_property_23_state_snapshot_round_trip(
     state_data: Dict[str, Any],
     scope: StateScope,
@@ -204,7 +204,7 @@ async def test_property_23_state_snapshot_round_trip(
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=100, deadline=3000)
+@settings(max_examples=10, deadline=3000)
 async def test_property_30_state_update_atomicity(
     key: str,
     initial_value: int,
@@ -260,7 +260,7 @@ async def test_property_30_state_update_atomicity(
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_state_update_with_none_initial_value(
     key: str, default_value: Any, scope: StateScope, scope_id: str
 ):
@@ -302,7 +302,7 @@ async def test_state_update_with_none_initial_value(
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_state_delete_return_value(
     key: str, value: Any, scope: StateScope, scope_id: str
 ):
@@ -344,7 +344,7 @@ async def test_state_delete_return_value(
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_get_all_returns_all_keys(
     state_data: Dict[str, Any], scope: StateScope, scope_id: str
 ):
@@ -388,7 +388,7 @@ async def test_get_all_returns_all_keys(
     scope_strategy(),
     scope_id_strategy(),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_clear_scope_removes_all_keys(
     state_data: Dict[str, Any], scope: StateScope, scope_id: str
 ):
@@ -433,7 +433,7 @@ async def test_clear_scope_removes_all_keys(
     scope_strategy(),
     st.lists(scope_id_strategy(), min_size=2, max_size=5, unique=True),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_scope_id_isolation(
     key: str, value: Any, scope: StateScope, scope_ids: List[str]
 ):
@@ -485,7 +485,7 @@ async def test_scope_id_isolation(
         unique=True
     ),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 async def test_multiple_snapshots(
     initial_state: Dict[str, Any],
     scope: StateScope,

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 from agentlegatus.core.event_bus import EventBus
 from agentlegatus.core.executor import WorkflowExecutor
 from agentlegatus.core.state import InMemoryStateBackend, StateManager, StateScope
+from agentlegatus.exceptions import ProviderSwitchError
 
 
 class TestWorkflowExecutorCheckpoint:
@@ -355,7 +356,7 @@ class TestWorkflowExecutorProviderSwitching:
         await state_manager.set("current_workflow", workflow, StateScope.WORKFLOW)
         
         # Act & Assert
-        with pytest.raises(ValueError, match="Portable graph validation failed"):
+        with pytest.raises(ProviderSwitchError, match="validation failed"):
             await executor.switch_provider(mock_new_provider)
 
     @pytest.mark.asyncio

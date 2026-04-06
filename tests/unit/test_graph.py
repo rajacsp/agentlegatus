@@ -370,3 +370,217 @@ class TestPortableExecutionGraph:
         assert restored.metadata == original.metadata
         assert restored.get_node("node1").config == original.get_node("node1").config
         assert restored.edges[0].condition == original.edges[0].condition
+
+    # --- Additional tests for comprehensive coverage ---
+
+    def test_add_node_stores_by_node_id(self):
+        """Test that add_node stores the node keyed by its node_id."""
+        graph = PortableExecutionGraph()
+        node = PEGNode("mynode", "agent", {"key": "val"})
+        graph.add_node(node)
+        assert graph.nodes["mynode"] is node
+
+    def test_add_edge_stores_edge_object(self):
+        """Test that add_edge appends the edge to the edges list."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("a", "agent", {}))
+        graph.add_node(PEGNode("b", "agent", {}))
+        edge = PEGEdge("a", "b", condition="ok")
+        graph.add_edge(edge)
+        assert graph.edges[0] is edge
+
+    def test_remove_node_preserves_unrelated_edges(self):
+        """Test that removing a node only removes edges connected to it."""
+        graph = PortableExecutionGraph()
+        for nid in ["a", "b", "c", "d"]:
+            graph.add_node(PEGNode(nid, "agent", {}))
+        graph.add_edge(PEGEdge("a", "b"))
+        graph.add_edge(PEGEdge("c", "d"))
+        graph.add_edge(PEGEdge("a", "c"))
+
+        graph.remove_node("a")
+
+        assert len(graph.edges) == 1
+        assert graph.edges[0].source == "c"
+        assert graph.edges[0].target == "d"
+
+    def test_get_successors_empty(self):
+        """Test get_successors returns empty list for node with no outgoing edges."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("solo", "agent", {}))
+        assert graph.get_successors("solo") == []
+
+    def test_get_predecessors_empty(self):
+        """Test get_predecessors returns empty list for node with no incoming edges."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("solo", "agent", {}))
+        assert graph.get_predecessors("solo") == []
+
+    def test_get_successors_for_nonexistent_node(self):
+        """Test get_successors returns empty list for a node not in the graph."""
+        graph = PortableExecutionGraph()
+        assert graph.get_successors("ghost") == []
+
+    def test_get_predecessors_for_nonexistent_node(self):
+        """Test get_predecessors returns empty list for a node not in the graph."""
+        graph = PortableExecutionGraph()
+        assert graph.get_predecessors("ghost") == []
+
+    def test_validate_empty_graph(self):
+        """Test that an empty graph is valid."""
+        graph = PortableExecutionGraph()
+        is_valid, errors = graph.validate()
+        assert is_valid is True
+        assert errors == []
+
+    def test_validate_single_node(self):
+        """Test that a single-node graph with no edges is valid."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("only", "agent", {}))
+        is_valid, errors = graph.validate()
+        assert is_valid is True
+        assert errors == []
+
+    def test_validate_disconnected_nodes(self):
+        """Test that a graph with disconnected nodes (no edges) is valid."""
+        graph = PortableExecutionGraph()
+        for i in range(5):
+            graph.add_node(PEGNode(f"n{i}", "agent", {}))
+        is_valid, errors = graph.validate()
+        assert is_valid is True
+        assert errors == []
+
+    def test_validate_detects_invalid_edge_references(self):
+        """Test that validate detects edges referencing non-existent nodes."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("a", "agent", {}))
+        # Manually inject a bad edge (bypassing add_edge validation)
+        graph.edges.append(PEGEdge("a", "missing_target"))
+        graph.edges.append(PEGEdge("missing_source", "a"))
+
+        is_valid, errors = graph.validate()
+        assert is_valid is False
+        assert any("missing_target" in e for e in errors)
+        assert any("missing_source" in e for e in errors)
+
+    def test_validate_complex_dag(self):
+        """Test validation of a complex but valid DAG (diamond shape)."""
+        graph = PortableExecutionGraph()
+        for nid in ["start", "left", "right", "end"]:
+            graph.add_node(PEGNode(nid, "agent", {}))
+        graph.add_edge(PEGEdge("start", "left"))
+        graph.add_edge(PEGEdge("start", "right"))
+        graph.add_edge(PEGEdge("left", "end"))
+        graph.add_edge(PEGEdge("right", "end"))
+
+        is_valid, errors = graph.validate()
+        assert is_valid is True
+        assert errors == []
+
+    def test_edge_serialization_without_condition(self):
+        """Test that edge serialization omits condition when it's None."""
+        edge = PEGEdge(source="a", target="b")
+        data = edge.to_dict()
+        assert "condition" not in data
+        assert data == {"source": "a", "target": "b"}
+
+    def test_edge_deserialization_without_condition(self):
+        """Test edge deserialization when condition is absent."""
+        data = {"source": "x", "target": "y"}
+        edge = PEGEdge.from_dict(data)
+        assert edge.condition is None
+
+    def test_node_deserialization_missing_optional_fields(self):
+        """Test node deserialization when inputs/outputs are missing."""
+        data = {
+            "node_id": "n1",
+            "node_type": "agent",
+            "config": {},
+        }
+        node = PEGNode.from_dict(data)
+        assert node.inputs == []
+        assert node.outputs == []
+
+    def test_node_default_inputs_outputs(self):
+        """Test that PEGNode defaults inputs and outputs to empty lists."""
+        node = PEGNode(node_id="n", node_type="agent", config={})
+        assert node.inputs == []
+        assert node.outputs == []
+
+    def test_dict_round_trip_preserves_all_node_fields(self):
+        """Test to_dict/from_dict round-trip preserves all node fields."""
+        graph = PortableExecutionGraph()
+        node = PEGNode(
+            "n1", "condition",
+            config={"expr": "x > 0", "nested": {"a": [1, 2, 3]}},
+            inputs=["in1", "in2"],
+            outputs=["out1"],
+        )
+        graph.add_node(node)
+        graph.metadata = {"key": "value"}
+
+        restored = PortableExecutionGraph.from_dict(graph.to_dict())
+        rn = restored.get_node("n1")
+        assert rn.node_id == "n1"
+        assert rn.node_type == "condition"
+        assert rn.config == {"expr": "x > 0", "nested": {"a": [1, 2, 3]}}
+        assert rn.inputs == ["in1", "in2"]
+        assert rn.outputs == ["out1"]
+        assert restored.metadata == {"key": "value"}
+
+    def test_from_dict_empty_data(self):
+        """Test from_dict with empty/minimal data."""
+        graph = PortableExecutionGraph.from_dict({})
+        assert len(graph.nodes) == 0
+        assert len(graph.edges) == 0
+        assert graph.metadata == {}
+
+    def test_json_round_trip_with_edge_conditions(self):
+        """Test JSON round-trip preserves edge conditions."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("a", "agent", {}))
+        graph.add_node(PEGNode("b", "agent", {}))
+        graph.add_node(PEGNode("c", "agent", {}))
+        graph.add_edge(PEGEdge("a", "b", condition="success"))
+        graph.add_edge(PEGEdge("a", "c"))  # No condition
+
+        restored = PortableExecutionGraph.from_json(graph.to_json())
+        conditions = [e.condition for e in restored.edges]
+        assert "success" in conditions
+        assert None in conditions
+
+    def test_json_round_trip_metadata(self):
+        """Test JSON round-trip preserves metadata."""
+        graph = PortableExecutionGraph()
+        graph.metadata = {"version": "2.0", "tags": ["test", "ci"], "count": 42}
+
+        restored = PortableExecutionGraph.from_json(graph.to_json())
+        assert restored.metadata == {"version": "2.0", "tags": ["test", "ci"], "count": 42}
+
+    def test_multiple_edges_between_same_nodes(self):
+        """Test that multiple edges between the same pair of nodes are allowed."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("a", "agent", {}))
+        graph.add_node(PEGNode("b", "agent", {}))
+        graph.add_edge(PEGEdge("a", "b", condition="success"))
+        graph.add_edge(PEGEdge("a", "b", condition="failure"))
+
+        assert len(graph.edges) == 2
+        successors = graph.get_successors("a")
+        assert successors == ["b", "b"]
+
+    def test_remove_node_returns_true_for_existing(self):
+        """Test remove_node returns True when node exists."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("x", "agent", {}))
+        assert graph.remove_node("x") is True
+        assert graph.get_node("x") is None
+
+    def test_remove_node_then_readd(self):
+        """Test that a removed node can be re-added."""
+        graph = PortableExecutionGraph()
+        graph.add_node(PEGNode("x", "agent", {"v": 1}))
+        graph.remove_node("x")
+        graph.add_node(PEGNode("x", "tool", {"v": 2}))
+        assert graph.get_node("x").node_type == "tool"
+        assert graph.get_node("x").config == {"v": 2}

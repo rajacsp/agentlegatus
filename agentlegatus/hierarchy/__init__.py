@@ -2,7 +2,8 @@
 
 from agentlegatus.hierarchy.agent import Agent
 from agentlegatus.hierarchy.centurion import Centurion
-from agentlegatus.hierarchy.cohort import Cohort, CohortStrategy, CohortFullError
+from agentlegatus.hierarchy.cohort import Cohort, CohortFullError, CohortStrategy
+from agentlegatus.hierarchy.legatus import Legatus
 
 __all__ = [
     "Agent",
@@ -10,4 +11,5 @@ __all__ = [
     "Cohort",
     "CohortStrategy",
     "CohortFullError",
+    "Legatus",
 ]

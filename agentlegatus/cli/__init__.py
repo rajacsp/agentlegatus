@@ -1,3 +1,5 @@
-"""Command-line interface."""
+"""Command-line interface for AgentLegatus."""
 
-__all__ = []
+from agentlegatus.cli.main import cli
+
+__all__ = ["cli"]

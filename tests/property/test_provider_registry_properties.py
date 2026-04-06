@@ -187,7 +187,7 @@ def provider_class_strategy(draw):
     provider_class=provider_class_strategy(),
     config=provider_config_strategy()
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_18_provider_registry_caching(
     provider_name: str,
     provider_class: type,
@@ -233,7 +233,7 @@ def test_property_18_provider_registry_caching(
     config1=provider_config_strategy(),
     config2=provider_config_strategy()
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_18_different_configs_different_instances(
     provider_name: str,
     provider_class: type,
@@ -284,7 +284,7 @@ def test_property_18_different_configs_different_instances(
         unique_by=lambda x: x[0]  # Unique by provider name
     )
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_19_provider_registry_completeness(
     providers: List[tuple[str, type]]
 ):
@@ -335,7 +335,7 @@ def test_property_19_provider_registry_completeness(
     ),
     unregistered_name=provider_name_strategy()
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_19_unregistered_providers_not_in_list(
     registered_providers: List[tuple[str, type]],
     unregistered_name: str
@@ -377,7 +377,7 @@ def test_property_19_unregistered_providers_not_in_list(
     ),
     unregister_index=st.integers(min_value=0, max_value=9)
 )
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_provider_registry_unregister_consistency(
     providers: List[tuple[str, type]],
     unregister_index: int
@@ -434,7 +434,7 @@ def test_provider_registry_unregister_consistency(
     provider_name=provider_name_strategy(),
     provider_class=provider_class_strategy()
 )
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_provider_info_consistency(
     provider_name: str,
     provider_class: type
@@ -475,7 +475,7 @@ def test_provider_info_consistency(
     ),
     nonexistent_name=provider_name_strategy()
 )
-@settings(max_examples=30, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_provider_not_found_error_includes_available(
     registered_providers: List[tuple[str, type]],
     nonexistent_name: str

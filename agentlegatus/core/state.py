@@ -1,10 +1,10 @@
 """State management abstractions and implementations."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from agentlegatus.core.event_bus import Event, EventBus, EventType
 
@@ -22,9 +22,7 @@ class StateBackend(ABC):
     """Abstract base class for state storage implementations."""
 
     @abstractmethod
-    async def get(
-        self, key: str, scope: StateScope, scope_id: str
-    ) -> Optional[Any]:
+    async def get(self, key: str, scope: StateScope, scope_id: str) -> Any | None:
         """
         Get state value by key and scope.
 
@@ -45,7 +43,7 @@ class StateBackend(ABC):
         value: Any,
         scope: StateScope,
         scope_id: str,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """
         Set state value with optional TTL.
@@ -75,7 +73,7 @@ class StateBackend(ABC):
         pass
 
     @abstractmethod
-    async def get_all(self, scope: StateScope, scope_id: str) -> Dict[str, Any]:
+    async def get_all(self, scope: StateScope, scope_id: str) -> dict[str, Any]:
         """
         Get all state values for a scope.
 
@@ -100,9 +98,7 @@ class StateBackend(ABC):
         pass
 
     @abstractmethod
-    async def create_snapshot(
-        self, snapshot_id: str, scope: StateScope, scope_id: str
-    ) -> None:
+    async def create_snapshot(self, snapshot_id: str, scope: StateScope, scope_id: str) -> None:
         """
         Create a snapshot of current state.
 
@@ -114,9 +110,7 @@ class StateBackend(ABC):
         pass
 
     @abstractmethod
-    async def restore_snapshot(
-        self, snapshot_id: str, scope: StateScope, scope_id: str
-    ) -> None:
+    async def restore_snapshot(self, snapshot_id: str, scope: StateScope, scope_id: str) -> None:
         """
         Restore state from a snapshot.
 
@@ -138,7 +132,6 @@ class StateBackend(ABC):
         pass
 
 
-
 class StateManager:
     """Unified state management across providers."""
 
@@ -146,7 +139,7 @@ class StateManager:
         self,
         backend: StateBackend,
         default_scope_id: str = "default",
-        event_bus: Optional[EventBus] = None,
+        event_bus: EventBus | None = None,
     ):
         """
         Initialize state manager with backend.
@@ -164,7 +157,7 @@ class StateManager:
         self,
         key: str,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
         default: Any = None,
     ) -> Any:
         """
@@ -188,8 +181,8 @@ class StateManager:
         key: str,
         value: Any,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
-        ttl: Optional[int] = None,
+        scope_id: str | None = None,
+        ttl: int | None = None,
     ) -> None:
         """
         Set state value with optional TTL.
@@ -225,7 +218,7 @@ class StateManager:
         key: str,
         updater: Callable[[Any], Any],
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> Any:
         """
         Update state value using updater function atomically.
@@ -272,7 +265,7 @@ class StateManager:
         self,
         key: str,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> bool:
         """
         Delete state value.
@@ -309,8 +302,8 @@ class StateManager:
     async def get_all(
         self,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        scope_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Get all state values for a scope.
 
@@ -327,7 +320,7 @@ class StateManager:
     async def clear_scope(
         self,
         scope: StateScope,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> None:
         """
         Clear all state in a scope.
@@ -358,7 +351,7 @@ class StateManager:
         self,
         snapshot_id: str,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> None:
         """
         Create a snapshot of current state.
@@ -375,7 +368,7 @@ class StateManager:
         self,
         snapshot_id: str,
         scope: StateScope = StateScope.WORKFLOW,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> None:
         """
         Restore state from a snapshot.
@@ -414,25 +407,22 @@ class StateManager:
         return await self.backend.list_snapshots()
 
 
-
 class InMemoryStateBackend(StateBackend):
     """In-memory state backend for development and testing."""
 
     def __init__(self):
         """Initialize in-memory backend."""
         # Structure: {scope: {scope_id: {key: value}}}
-        self._storage: Dict[StateScope, Dict[str, Dict[str, Any]]] = {
+        self._storage: dict[StateScope, dict[str, dict[str, Any]]] = {
             StateScope.WORKFLOW: {},
             StateScope.STEP: {},
             StateScope.AGENT: {},
             StateScope.GLOBAL: {},
         }
         # Structure: {snapshot_id: {scope: {scope_id: {key: value}}}}
-        self._snapshots: Dict[str, Dict[StateScope, Dict[str, Dict[str, Any]]]] = {}
+        self._snapshots: dict[str, dict[StateScope, dict[str, dict[str, Any]]]] = {}
 
-    def _get_scope_storage(
-        self, scope: StateScope, scope_id: str
-    ) -> Dict[str, Any]:
+    def _get_scope_storage(self, scope: StateScope, scope_id: str) -> dict[str, Any]:
         """
         Get or create storage for a specific scope and scope_id.
 
@@ -447,9 +437,7 @@ class InMemoryStateBackend(StateBackend):
             self._storage[scope][scope_id] = {}
         return self._storage[scope][scope_id]
 
-    async def get(
-        self, key: str, scope: StateScope, scope_id: str
-    ) -> Optional[Any]:
+    async def get(self, key: str, scope: StateScope, scope_id: str) -> Any | None:
         """Get state value by key and scope."""
         storage = self._get_scope_storage(scope, scope_id)
         return storage.get(key)
@@ -460,7 +448,7 @@ class InMemoryStateBackend(StateBackend):
         value: Any,
         scope: StateScope,
         scope_id: str,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Set state value with optional TTL."""
         storage = self._get_scope_storage(scope, scope_id)
@@ -475,7 +463,7 @@ class InMemoryStateBackend(StateBackend):
             return True
         return False
 
-    async def get_all(self, scope: StateScope, scope_id: str) -> Dict[str, Any]:
+    async def get_all(self, scope: StateScope, scope_id: str) -> dict[str, Any]:
         """Get all state values for a scope."""
         storage = self._get_scope_storage(scope, scope_id)
         return storage.copy()
@@ -485,9 +473,7 @@ class InMemoryStateBackend(StateBackend):
         if scope_id in self._storage[scope]:
             self._storage[scope][scope_id].clear()
 
-    async def create_snapshot(
-        self, snapshot_id: str, scope: StateScope, scope_id: str
-    ) -> None:
+    async def create_snapshot(self, snapshot_id: str, scope: StateScope, scope_id: str) -> None:
         """Create a snapshot of current state."""
         if snapshot_id not in self._snapshots:
             self._snapshots[snapshot_id] = {
@@ -499,13 +485,9 @@ class InMemoryStateBackend(StateBackend):
 
         # Deep copy the current state for the specified scope
         storage = self._get_scope_storage(scope, scope_id)
-        self._snapshots[snapshot_id][scope][scope_id] = {
-            k: v for k, v in storage.items()
-        }
+        self._snapshots[snapshot_id][scope][scope_id] = dict(storage.items())
 
-    async def restore_snapshot(
-        self, snapshot_id: str, scope: StateScope, scope_id: str
-    ) -> None:
+    async def restore_snapshot(self, snapshot_id: str, scope: StateScope, scope_id: str) -> None:
         """Restore state from a snapshot."""
         if snapshot_id not in self._snapshots:
             raise ValueError(f"Snapshot '{snapshot_id}' not found")
@@ -517,7 +499,7 @@ class InMemoryStateBackend(StateBackend):
 
         # Restore the snapshot data
         snapshot_data = self._snapshots[snapshot_id][scope][scope_id]
-        self._storage[scope][scope_id] = {k: v for k, v in snapshot_data.items()}
+        self._storage[scope][scope_id] = dict(snapshot_data.items())
 
     async def list_snapshots(self) -> list[str]:
         """List all available snapshot IDs."""

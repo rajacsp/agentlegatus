@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 
 @dataclass
@@ -11,14 +11,14 @@ class PEGNode:
 
     node_id: str
     node_type: str  # "agent", "tool", "condition", "loop"
-    config: Dict[str, Any]
-    inputs: List[str] = field(default_factory=list)
-    outputs: List[str] = field(default_factory=list)
+    config: dict[str, Any]
+    inputs: list[str] = field(default_factory=list)
+    outputs: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize node to dictionary.
-        
+
         Returns:
             Dictionary representation of the node
         """
@@ -31,13 +31,13 @@ class PEGNode:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PEGNode":
+    def from_dict(cls, data: dict[str, Any]) -> "PEGNode":
         """
         Deserialize node from dictionary.
-        
+
         Args:
             data: Dictionary representation of the node
-            
+
         Returns:
             PEGNode instance
         """
@@ -56,12 +56,12 @@ class PEGEdge:
 
     source: str
     target: str
-    condition: Optional[str] = None
+    condition: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize edge to dictionary.
-        
+
         Returns:
             Dictionary representation of the edge
         """
@@ -74,13 +74,13 @@ class PEGEdge:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PEGEdge":
+    def from_dict(cls, data: dict[str, Any]) -> "PEGEdge":
         """
         Deserialize edge from dictionary.
-        
+
         Args:
             data: Dictionary representation of the edge
-            
+
         Returns:
             PEGEdge instance
         """
@@ -96,17 +96,17 @@ class PortableExecutionGraph:
 
     def __init__(self):
         """Initialize empty PEG."""
-        self.nodes: Dict[str, PEGNode] = {}
-        self.edges: List[PEGEdge] = []
-        self.metadata: Dict[str, Any] = {}
+        self.nodes: dict[str, PEGNode] = {}
+        self.edges: list[PEGEdge] = []
+        self.metadata: dict[str, Any] = {}
 
     def add_node(self, node: PEGNode) -> None:
         """
         Add a node to the graph.
-        
+
         Args:
             node: PEGNode to add
-            
+
         Raises:
             ValueError: If node with same ID already exists
         """
@@ -117,10 +117,10 @@ class PortableExecutionGraph:
     def add_edge(self, edge: PEGEdge) -> None:
         """
         Add an edge to the graph.
-        
+
         Args:
             edge: PEGEdge to add
-            
+
         Raises:
             ValueError: If source or target node doesn't exist
         """
@@ -133,83 +133,77 @@ class PortableExecutionGraph:
     def remove_node(self, node_id: str) -> bool:
         """
         Remove a node and all its connected edges.
-        
+
         Args:
             node_id: ID of the node to remove
-            
+
         Returns:
             True if node was removed, False if node didn't exist
         """
         if node_id not in self.nodes:
             return False
-        
+
         # Remove the node
         del self.nodes[node_id]
-        
+
         # Remove all edges connected to this node
         self.edges = [
-            edge for edge in self.edges
-            if edge.source != node_id and edge.target != node_id
+            edge for edge in self.edges if edge.source != node_id and edge.target != node_id
         ]
-        
+
         return True
 
-    def get_node(self, node_id: str) -> Optional[PEGNode]:
+    def get_node(self, node_id: str) -> PEGNode | None:
         """
         Get a node by ID.
-        
+
         Args:
             node_id: ID of the node to retrieve
-            
+
         Returns:
             PEGNode if found, None otherwise
         """
         return self.nodes.get(node_id)
 
-    def get_successors(self, node_id: str) -> List[str]:
+    def get_successors(self, node_id: str) -> list[str]:
         """
         Get successor node IDs.
-        
+
         Args:
             node_id: ID of the node
-            
+
         Returns:
             List of successor node IDs
         """
         return [edge.target for edge in self.edges if edge.source == node_id]
 
-    def get_predecessors(self, node_id: str) -> List[str]:
+    def get_predecessors(self, node_id: str) -> list[str]:
         """
         Get predecessor node IDs.
-        
+
         Args:
             node_id: ID of the node
-            
+
         Returns:
             List of predecessor node IDs
         """
         return [edge.source for edge in self.edges if edge.target == node_id]
 
-    def _has_cycle_dfs(
-        self, 
-        node_id: str, 
-        visited: Set[str], 
-        rec_stack: Set[str]
-    ) -> bool:
+    def _has_cycle_dfs(self, node_id: str, visited: set[str], rec_stack: set[str]) -> bool:
         """
         Detect cycles using depth-first search.
-        
+
         Args:
             node_id: Current node being visited
             visited: Set of all visited nodes
             rec_stack: Set of nodes in current recursion stack
-            
+
         Returns:
             True if cycle detected, False otherwise
         """
         visited.add(node_id)
         rec_stack.add(node_id)
-        
+
         # Check all successors
         for successor in self.get_successors(node_id):
             if successor not in visited:
@@ -218,45 +212,45 @@ class PortableExecutionGraph:
             elif successor in rec_stack:
                 # Back edge found - cycle detected
                 return True
-        
+
         rec_stack.remove(node_id)
         return False
 
-    def validate(self) -> tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         """
         Validate graph structure.
-        
+
         Checks:
         - No cycles (DAG requirement)
         - All edge references point to existing nodes
         - All node IDs are unique (enforced by dict)
-        
+
         Returns:
             Tuple of (is_valid, error_messages)
         """
         errors = []
-        
+
         # Check for cycles using DFS
-        visited: Set[str] = set()
+        visited: set[str] = set()
         for node_id in self.nodes:
             if node_id not in visited:
                 if self._has_cycle_dfs(node_id, visited, set()):
                     errors.append("Graph contains cycles")
                     break
-        
+
         # Check for invalid node references in edges
         for edge in self.edges:
             if edge.source not in self.nodes:
                 errors.append(f"Edge references non-existent source node: {edge.source}")
             if edge.target not in self.nodes:
                 errors.append(f"Edge references non-existent target node: {edge.target}")
-        
+
         return len(errors) == 0, errors
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize graph to dictionary.
-        
+
         Returns:
             Dictionary representation of the graph
         """
@@ -267,35 +261,35 @@ class PortableExecutionGraph:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PortableExecutionGraph":
+    def from_dict(cls, data: dict[str, Any]) -> "PortableExecutionGraph":
         """
         Deserialize graph from dictionary.
-        
+
         Args:
             data: Dictionary representation of the graph
-            
+
         Returns:
             PortableExecutionGraph instance
         """
         graph = cls()
-        
+
         # Load nodes
         for node_id, node_data in data.get("nodes", {}).items():
             graph.nodes[node_id] = PEGNode.from_dict(node_data)
-        
+
         # Load edges
         for edge_data in data.get("edges", []):
             graph.edges.append(PEGEdge.from_dict(edge_data))
-        
+
         # Load metadata
         graph.metadata = data.get("metadata", {})
-        
+
         return graph
 
     def to_json(self) -> str:
         """
         Serialize graph to JSON string.
-        
+
         Returns:
             JSON string representation of the graph
         """
@@ -305,10 +299,10 @@ class PortableExecutionGraph:
     def from_json(cls, json_str: str) -> "PortableExecutionGraph":
         """
         Deserialize graph from JSON string.
-        
+
         Args:
             json_str: JSON string representation of the graph
-            
+
         Returns:
             PortableExecutionGraph instance
         """

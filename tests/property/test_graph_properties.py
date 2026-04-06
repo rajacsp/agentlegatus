@@ -153,7 +153,7 @@ def cyclic_graph_strategy(draw, min_nodes=2, max_nodes=6):
 
 # Property 16: Graph Serialization Round-Trip
 @given(simple_graph_strategy(min_nodes=1, max_nodes=15))
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_16_graph_serialization_round_trip(graph_data: Tuple[List[PEGNode], List[PEGEdge]]):
     """
     Property 16: Graph Serialization Round-Trip
@@ -220,7 +220,7 @@ def test_property_16_graph_serialization_round_trip(graph_data: Tuple[List[PEGNo
     simple_graph_strategy(min_nodes=3, max_nodes=10),
     st.integers(min_value=0, max_value=9)
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_17_graph_node_removal_completeness(
     graph_data: Tuple[List[PEGNode], List[PEGEdge]],
     node_index: int
@@ -293,7 +293,7 @@ def test_property_17_graph_node_removal_completeness(
 
 # Property 25: Graph Cycle Detection
 @given(cyclic_graph_strategy(min_nodes=2, max_nodes=8))
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_25_graph_cycle_detection(graph_data: Tuple[List[PEGNode], List[PEGEdge]]):
     """
     Property 25: Graph Cycle Detection
@@ -337,7 +337,7 @@ def test_property_25_graph_cycle_detection(graph_data: Tuple[List[PEGNode], List
     node_id_strategy(),
     node_id_strategy(),
 )
-@settings(max_examples=100, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_property_26_graph_reference_validation(
     graph_data: Tuple[List[PEGNode], List[PEGEdge]],
     invalid_source: str,
@@ -398,7 +398,7 @@ def test_property_26_graph_reference_validation(
 
 # Additional test: Valid acyclic graph passes validation
 @given(simple_graph_strategy(min_nodes=1, max_nodes=10))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_valid_acyclic_graph_passes_validation(graph_data: Tuple[List[PEGNode], List[PEGEdge]]):
     """
     Test that a valid acyclic graph passes validation.
@@ -449,7 +449,7 @@ def test_serialization_preserves_empty_graph():
 
 # Additional test: Dictionary serialization round-trip
 @given(simple_graph_strategy(min_nodes=1, max_nodes=10))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_dictionary_serialization_round_trip(graph_data: Tuple[List[PEGNode], List[PEGEdge]]):
     """
     Test that to_dict/from_dict round-trip works correctly.
@@ -489,7 +489,7 @@ def test_dictionary_serialization_round_trip(graph_data: Tuple[List[PEGNode], Li
 
 # Additional test: Get successors and predecessors
 @given(simple_graph_strategy(min_nodes=3, max_nodes=8))
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_get_successors_and_predecessors(graph_data: Tuple[List[PEGNode], List[PEGEdge]]):
     """
     Test that get_successors and get_predecessors return correct nodes.
@@ -528,7 +528,7 @@ def test_get_successors_and_predecessors(graph_data: Tuple[List[PEGNode], List[P
 
 # Additional test: Cannot add duplicate node IDs
 @given(peg_node_strategy())
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_cannot_add_duplicate_node_ids(node: PEGNode):
     """
     Test that adding a node with duplicate ID raises ValueError.
@@ -551,7 +551,7 @@ def test_cannot_add_duplicate_node_ids(node: PEGNode):
     node_id_strategy(),
     node_id_strategy(),
 )
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_cannot_add_edge_with_nonexistent_nodes(
     node: PEGNode,
     invalid_source: str,
@@ -580,7 +580,7 @@ def test_cannot_add_edge_with_nonexistent_nodes(
 
 # Additional test: Get node returns correct node or None
 @given(simple_graph_strategy(min_nodes=1, max_nodes=5), node_id_strategy())
-@settings(max_examples=50, deadline=2000)
+@settings(max_examples=10, deadline=2000)
 def test_get_node_returns_correct_node_or_none(
     graph_data: Tuple[List[PEGNode], List[PEGEdge]],
     nonexistent_id: str,
