@@ -1,5 +1,7 @@
 # AgentLegatus
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/rajacsp/agentlegatus)
+
 Vendor-agnostic agent framework abstraction layer — Terraform for AI Agents.
 
 Switch between AI agent frameworks (LangGraph, AutoGen, CrewAI, Google ADK, AWS Strands, Microsoft Agent Framework) with minimal configuration changes. AgentLegatus provides a unified API, a Roman military hierarchy for orchestrating multi-agent workflows, and built-in benchmarking to compare providers side by side.
